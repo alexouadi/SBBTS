@@ -1,10 +1,11 @@
 import numpy as np
-import scipy.fft as fft
+import numba as nb
 import datetime
 import time
 from scipy.interpolate import interp1d
 
 
+@nb.jit(nopython=True, cache=True)
 def kernel(x,h):
     """
     Kernel function used for kernel regression.
@@ -15,7 +16,18 @@ def kernel(x,h):
     return np.where(np.abs(x) < h, (h ** 2 - x ** 2) ** 2 / h, 0)
 
 
-def simulate_sbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, eps=1e-6):
+@nb.jit(nopython=True, cache=True)
+def grad_kernel(x,h):
+    """
+    gradient w.r.t x of kernel(x,h).
+    :params x:; [float]
+    :params h: kernel bandwidth; [float]
+    return: gradient w.r.t x of shape (len(x),); [np.array]
+    """
+    return np.where(np.abs(x) < h, (h ** 2 - x ** 2) ** 2 / h, 0)
+
+
+def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
     """
     Simulate 1 univariate time series via the SBBTS kernel.
     :params N: number of time steps to generate, must be equal to (X.shape[1] - 1); [int]
@@ -27,7 +39,6 @@ def simulate_sbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, eps=1e-6):
     :params grid: uniform spatial grid; [np.array]
     :params K: number of iteration to compute the potential phi*; [int]
     :params beta: cost parameter to control the volatility, must be > 0; [float]
-    :params eps: threshold to stop the convergence if |phi^{k+1} - phi^k| < eps, must be > 0; [float]
     return: 1 time series of shape (N+1,); [np.array]
     """
     # Diffusion calendar
@@ -45,15 +56,6 @@ def simulate_sbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, eps=1e-6):
     weights = np.ones(M)
     index_ = 0
 
-    n = len(grid)
-    L = grid[-1] - grid[0]
-    term_2 = np.log(2 * np.pi * deltati) / 2
-    grid_vect = grid[np.newaxis, :]
-
-    fvf = fft.fftfreq(n, d=L/n) * 2 * np.pi
-    gaussian_kernel = 1 / np.sqrt(2 * np.pi * deltati) * np.exp(-(grid ** 2) / (2 * deltati ** 2))
-    fft_gaussian = fft.fft(gaussian_kernel)
-
     for i in range(N):
         if i > 0:
             weights[:] *= kernel(X[:, i] - X_, h)
@@ -62,63 +64,63 @@ def simulate_sbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, eps=1e-6):
         weights_vect = weights[:, np.newaxis]
 
         # Initialization
-        phi_values = np.zeros(n)
+        y_k = X_
+        msY_k = X[:, i + 1].copy()
 
         # Iterate until convergence towards phi*
         for k in range(K):
-            fft_phi = fft.fft(np.exp(phi_values))
-            fft_h_k = fft_gaussian * fft_phi
-            h_k = fft.ifft(fft_h_k).real  # h^k over all the grid
-            
+            # Solve y_k via grid search
+            weights_one = np.exp((msY_k - y_k) ** 2 / (2 * deltati)) * weights
+            weights_h_k = weights_one[:, np.newaxis] * np.exp(
+                (msY_k[:, np.newaxis] - grid[np.newaxis, :]) ** 2 / (-2 * deltati)
+            )
+            h_k = np.mean(weights_h_k, axis=0)
             y_k_index = np.argmin(np.log(h_k) + 0.5 * beta * (X_ - grid) ** 2)
-            y_k = grid[y_k_index]
+            y_k_new = grid[y_k_index]
 
-            # Compute the transport map
-            fft_grad_phi = 1j * fvf * fft_phi
-            grad_phi = fft.ifft(fft_grad_phi).real
-
+            # Update msY_k
+            grad_phi_num = np.sum(grad_kernel(msY_k[:, np.newaxis] - grid[np.newaxis, :], h) * weights[:, np.newaxis],
+                                 axis=0)
+            grad_phi_den = np.sum(kernel(msY_k[:, np.newaxis] - grid[np.newaxis, :], h) * weights[:, np.newaxis],
+                                 axis=0)
+            grad_phi = np.where(grad_phi_den != 0, grad_phi_num / grad_phi_den + (grid - y_k) / (2 * deltati), 0.0)
             msX = grid + 1 / beta * grad_phi
-            msY_k = interp1d(msX, grid, fill_value='extrapolate')
-            msY = msY_k(X[:, i + 1])  # msY pushforward mu_{i+1}
+            msY_k_interpolate = interp1d(msX, grid, fill_value='extrapolate')
 
-            # Update the potential
-            msY_vect = msY[:, np.newaxis]
-            term_1 = np.log(np.mean(kernel(msY_vect - grid_vect, h) * weights_vect, axis=0))
-            term_3 = (grid - y_k) ** 2 / (2 * deltati)
-            phi_values_new = term_1 + term_2 + term_3 
+            # Update y_k and msY_k
+            y_k = y_k_new
+            msY_k = msY_k_interpolate(X[:, i + 1])  # msY_k pushforward mu_{i+1|0:i}
             
-            if np.max(np.abs(phi_values - phi_values_new)) < eps:  # convergence is reached
-                phi_values = phi_values_new
-                break
-                
-            phi_values = phi_values_new
 
-        fft_phi_star = fft.fft(np.exp(phi_values))
+        weights_one_star = np.exp((msY_k - y_k) ** 2 / (2 * deltati)) * weights
         for k in range(len(v_time_step_Euler) - 1):
             timeprev = v_time_step_Euler[k]
             timestep = v_time_step_Euler[k + 1] - v_time_step_Euler[k]
 
-            # Compute h*
-            gaussian_kernel_star = 1 / np.sqrt(2 * np.pi * (deltati - timeprev)) * np.exp(
-                -(grid ** 2) / (2 * (deltati - timeprev) ** 2)
+            # Compute Y* at time t
+            weights_h_star = weights_one_star[:, np.newaxis] * np.exp(
+                (msY_k[:, np.newaxis] - grid[np.newaxis, :]) ** 2 / (-2 * (deltati - timeprev))
             )
-            fft_gaussian_star = fft.fft(gaussian_kernel_star)
-            fft_h_star = fft_gaussian_star * fft_phi_star
-            h_star = fft.ifft(fft_h_star).real
+            h_star = np.mean(weights_h_star, axis=0)
+            msY_star_index = np.argmin(np.log(h_star) + 0.5 * (X_ - grid) ** 2)
 
             # Compute msY* at time t via grid search
-            msY_star = np.argmin(np.log(h_star) + 0.5 * beta * (X_ - grid) ** 2)
+            msY_star_index = np.argmin(np.log(h_star) + 0.5 * beta * (X_ - grid) ** 2)
+            msY_star = grid[msY_star_index]
 
             # Compute the drift and volatility
-            fft_log_h_star = fft.fft(np.log(h_star))
-            grad_log_h_star = fft.ifft(1j * fvf * fft_log_h_star).real
-            fft_hessian_log_h_star = - fvf ** 2 * fft_log_h_star
-            hessian_log_h_star = fft.ifft(fft_hessian_log_h_star).real
+            weights_den = weights_one_star * np.exp((msY_k - msY_star) ** 2 / (-2 * (deltati - timeprev)))
+            h_star = np.sum(weights_den)
+            
+            grad_h_star = 1 / (deltati - timeprev) * np.sum(weights_den * (msY_k - msY_star))
+            hessian_h_star = np.sum(
+                weights_den * (((msY_k - msY_star) / (deltati - timeprev)) ** 2 - 1 / (deltati - timeprev))
+            )
 
-            drift = grad_log_h_star[msY_star]
-            vol = 1 + 1 / beta * hessian_log_h_star[msY_star]
+            drift = grad_h_star / h_star if h_star > 0 else 0.0
+            vol = 1 + 1 / beta * (hessian_h_star / h_star - (grad_h_star / h_star) ** 2 if h_star > 0 else 0.0)
 
-            X_ += drift * timestep + Brownian[index_] * np.sqrt(vol * timestep)
+            X_ += drift * timestep + Brownian[index_] * np.sqrt(np.abs(vol) * timestep)
             index_ += 1
                 
         timeSeries[i + 1] = X_
@@ -126,7 +128,7 @@ def simulate_sbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, eps=1e-6):
     return timeSeries
 
 
-def simusbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, M_simu, eps=1e-6):
+def simusbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta, M_simu):
     """
     Simulate M_simu univariate time series via the SBBTS kernel.
     :params N: number of time steps to generate, must be equal to (X.shape[1] - 1); [int]
@@ -139,7 +141,6 @@ def simusbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, M_simu, eps=1e-6):
     :params K: number of iteration to compute the potential phi*; [int]
     :params beta: cost parameter to control the volatility, must be > 0; [float]
     :params M_simu: number of time series to generate; [int]
-    :params eps: threshold to stop the convergence if |phi^{k+1} - phi^k| < eps, must be > 0; [float]
     return: M_simu time series of shape (M_simu,N); [np.array]
     """
     data_sb = np.zeros((M_simu, X.shape[-1]))
@@ -148,7 +149,7 @@ def simusbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, M_simu, eps=1e-6):
     time1 = time.perf_counter()
     
     for k in range(M_simu):
-        data_sb[k] = simulate_sbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, eps)
+        data_sb[k] = simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta)
         if k == 0:
             mm = (time.perf_counter() - time1) * (M_simu - 1) / 60
             st += datetime.timedelta(minutes=mm)
