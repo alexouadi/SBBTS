@@ -69,7 +69,7 @@ def simulate_kernel_sbts(N, M, X, N_pi, h, deltati, grid, K, beta, eps=1e-6):
             fft_phi = fft.fft(np.exp(phi_values))
             fft_h_k = fft_gaussian * fft_phi
             h_k = fft.ifft(fft_h_k).real  # h^k over all the grid
-
+            
             y_k_index = np.argmin(np.log(h_k) + 0.5 * beta * (X_ - grid) ** 2)
             y_k = grid[y_k_index]
 
@@ -78,8 +78,7 @@ def simulate_kernel_sbts(N, M, X, N_pi, h, deltati, grid, K, beta, eps=1e-6):
             grad_phi = fft.ifft(fft_grad_phi).real
 
             msX = grid + 1 / beta * grad_phi
-            msY_ = msX - 1 / beta * grad_phi  # False, to be corrected
-            msY_k = interp1d(msX, msY_, fill_value='extrapolate')
+            msY_k = interp1d(msX, grid, fill_value='extrapolate')
             msY = msY_k(X[:, i + 1])  # msY pushforward mu_{i+1}
 
             # Update the potential
@@ -114,10 +113,10 @@ def simulate_kernel_sbts(N, M, X, N_pi, h, deltati, grid, K, beta, eps=1e-6):
             fft_log_h_star = fft.fft(np.log(h_star))
             grad_log_h_star = fft.ifft(1j * fvf * fft_log_h_star).real
             fft_hessian_log_h_star = - fvf ** 2 * fft_log_h_star
-            hessian_log__hstar = fft.ifft(fft_hessian_log_h_star).real
+            hessian_log_hstar = fft.ifft(fft_hessian_log_h_star).real
 
             drift = grad_log_h_star[msY_star]
-            vol = 1 + 1 / beta * hessian_log__hstar[msY_star]
+            vol = 1 + 1 / beta * hessian_log_hstar[msY_star]
 
             X_ += drift * timestep + Brownian[index_] * np.sqrt(vol * timestep)
             index_ += 1
