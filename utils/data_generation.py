@@ -8,7 +8,7 @@ class Generate_Data:
         """
         self.M = M
 
-    def generate_GARCH(self, N, alpha_0=0.5, alpha_1=0.4, alpha_2=0.1, s=0.1, x0=0):
+    def generate_GARCH(self, N, alpha_0=5, alpha_1=0.4, alpha_2=0.1, s=0.1, x0=0):
         """
         Simulate M univariate GARCH processes.
         :params N: number of time steps to generate (without the x0); [int]
