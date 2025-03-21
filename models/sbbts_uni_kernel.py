@@ -13,7 +13,7 @@ def kernel(x,h):
     :params h: kernel bandwidth; [float]
     return: kernel function of shape (len(x),); [np.array]
     """
-    return np.where(np.abs(x) < h, (h ** 2 - x ** 2) ** 2 / h, 0)
+    return np.where(np.abs(x) < h, (h ** 2 - x ** 2) ** 2, 0)
 
 
 @nb.jit(nopython=True, cache=True)
@@ -24,7 +24,7 @@ def grad_kernel(x,h):
     :params h: kernel bandwidth; [float]
     return: gradient w.r.t x of shape (len(x),); [np.array]
     """
-    return np.where(np.abs(x) < h, (h ** 2 - x ** 2) ** 2 / h, 0)
+    return np.where(np.abs(x) < h, -4 * x *(h ** 2 - x ** 2), 0)
 
 
 def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
@@ -55,6 +55,7 @@ def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
     timeSeries[0] = X_
     weights = np.ones(M)
     index_ = 0
+    grid_vect = grid[np.newaxis, :]
 
     for i in range(N):
         if i > 0:
@@ -69,21 +70,20 @@ def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
 
         # Iterate until convergence towards phi*
         for k in range(K):
-            # Solve y_k via grid search
+            # Solve y_i^k via grid search
             weights_one = np.exp((msY_k - y_k) ** 2 / (2 * deltati)) * weights
             weights_h_k = weights_one[:, np.newaxis] * np.exp(
-                (msY_k[:, np.newaxis] - grid[np.newaxis, :]) ** 2 / (-2 * deltati)
+                (msY_k[:, np.newaxis] - grid_vect) ** 2 / (-2 * deltati)
             )
             h_k = np.mean(weights_h_k, axis=0)
             y_k_index = np.argmin(np.log(h_k) + 0.5 * beta * (X_ - grid) ** 2)
             y_k_new = grid[y_k_index]
 
             # Update msY_k
-            grad_phi_num = np.sum(grad_kernel(msY_k[:, np.newaxis] - grid[np.newaxis, :], h) * weights[:, np.newaxis],
-                                 axis=0)
-            grad_phi_den = np.sum(kernel(msY_k[:, np.newaxis] - grid[np.newaxis, :], h) * weights[:, np.newaxis],
-                                 axis=0)
+            grad_phi_num = np.sum(grad_kernel(msY_k[:, np.newaxis] - grid_vect, h) * weights_vect, axis=0)
+            grad_phi_den = np.sum(kernel(msY_k[:, np.newaxis] - grid_vect, h) * weights_vect, axis=0)
             grad_phi = np.where(grad_phi_den != 0, grad_phi_num / grad_phi_den + (grid - y_k) / (2 * deltati), 0.0)
+            
             msX = grid + 1 / beta * grad_phi
             msY_k_interpolate = interp1d(msX, grid, fill_value='extrapolate')
 
@@ -96,10 +96,11 @@ def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
         for k in range(len(v_time_step_Euler) - 1):
             timeprev = v_time_step_Euler[k]
             timestep = v_time_step_Euler[k + 1] - v_time_step_Euler[k]
+            delta_t = deltati - timeprev
 
             # Compute Y* at time t
             weights_h_star = weights_one_star[:, np.newaxis] * np.exp(
-                (msY_k[:, np.newaxis] - grid[np.newaxis, :]) ** 2 / (-2 * (deltati - timeprev))
+                (msY_k[:, np.newaxis] - grid_vect) ** 2 / (-2 * delta_t)
             )
             h_star = np.mean(weights_h_star, axis=0)
             msY_star_index = np.argmin(np.log(h_star) + 0.5 * (X_ - grid) ** 2)
@@ -109,16 +110,14 @@ def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
             msY_star = grid[msY_star_index]
 
             # Compute the drift and volatility
-            weights_den = weights_one_star * np.exp((msY_k - msY_star) ** 2 / (-2 * (deltati - timeprev)))
+            weights_den = weights_one_star * np.exp((msY_k - msY_star) ** 2 / (-2 * delta_t))
             h_star = np.sum(weights_den)
             
-            grad_h_star = 1 / (deltati - timeprev) * np.sum(weights_den * (msY_k - msY_star))
-            hessian_h_star = np.sum(
-                weights_den * (((msY_k - msY_star) / (deltati - timeprev)) ** 2 - 1 / (deltati - timeprev))
-            )
+            grad_h_star = 1 / delta_t * np.sum(weights_den * (msY_k - msY_star))
+            hessian_h_star = np.sum(weights_den * (((msY_k - msY_star) / delta_t) ** 2 - 1 / delta_t))
 
             drift = grad_h_star / h_star if h_star > 0 else 0.0
-            vol = 1 + 1 / beta * (hessian_h_star / h_star - (grad_h_star / h_star) ** 2 if h_star > 0 else 0.0)
+            vol = 1 + 1 / beta * (hessian_h_star / h_star - (grad_h_star / h_star) ** 2) if h_star > 0 else 0.0
 
             X_ += drift * timestep + Brownian[index_] * np.sqrt(np.abs(vol) * timestep)
             index_ += 1
