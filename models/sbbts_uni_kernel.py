@@ -19,12 +19,12 @@ def kernel(x,h):
 @nb.jit(nopython=True, cache=True)
 def grad_kernel(x,h):
     """
-    gradient w.r.t x of kernel(x,h).
+    gradient w.r.t y of kernel(x - y,h).
     :params x:; [float]
     :params h: kernel bandwidth; [float]
-    return: gradient w.r.t x of shape (len(x),); [np.array]
+    return: gradient of kernel(x-y, h) of shape (len(x),); [np.array]
     """
-    return np.where(np.abs(x) < h, -4 * x *(h ** 2 - x ** 2), 0)
+    return np.where(np.abs(x) < h, 4 * x *(h ** 2 - x ** 2), 0)
 
 
 def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
@@ -63,6 +63,7 @@ def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
         else:
             weights[:] = 1 / M
         weights_vect = weights[:, np.newaxis]
+        weights_ratio = weights / np.sum(weights) if np.sum(weights) > 0 else 0.0
 
         # Initialization
         y_k = X_
@@ -71,7 +72,7 @@ def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
         # Iterate until convergence towards phi*
         for k in range(K):
             # Solve y_i^k via grid search
-            weights_one = np.exp((msY_k - y_k) ** 2 / (2 * deltati)) * weights
+            weights_one = np.exp((msY_k - y_k) ** 2 / (2 * deltati)) * weights_ratio
             weights_h_k = weights_one[:, np.newaxis] * np.exp(
                 (msY_k[:, np.newaxis] - grid_vect) ** 2 / (-2 * deltati)
             )
@@ -92,7 +93,7 @@ def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
             msY_k = msY_k_interpolate(X[:, i + 1])  # msY_k pushforward mu_{i+1|0:i}
             
 
-        weights_one_star = np.exp((msY_k - y_k) ** 2 / (2 * deltati)) * weights
+        weights_one_star = np.exp((msY_k - y_k) ** 2 / (2 * deltati)) * weights_ratio
         for k in range(len(v_time_step_Euler) - 1):
             timeprev = v_time_step_Euler[k]
             timestep = v_time_step_Euler[k + 1] - v_time_step_Euler[k]
@@ -102,8 +103,8 @@ def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
             weights_h_star = weights_one_star[:, np.newaxis] * np.exp(
                 (msY_k[:, np.newaxis] - grid_vect) ** 2 / (-2 * delta_t)
             )
-            h_star = np.mean(weights_h_star, axis=0)
-            msY_star_index = np.argmin(np.log(h_star) + 0.5 * (X_ - grid) ** 2)
+            h_star_ = np.mean(weights_h_star, axis=0)
+            msY_star_index = np.argmin(np.log(h_star_) + 0.5 * (X_ - grid) ** 2)
 
             # Compute msY* at time t via grid search
             msY_star_index = np.argmin(np.log(h_star) + 0.5 * beta * (X_ - grid) ** 2)
