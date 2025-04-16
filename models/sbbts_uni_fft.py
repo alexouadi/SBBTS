@@ -51,7 +51,7 @@ def simulate_sbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, eps=1e-6):
     grid_vect = grid[np.newaxis, :]
 
     fvf = fft.fftfreq(n, d=L/n) * 2 * np.pi
-    gaussian_kernel = 1 / np.sqrt(2 * np.pi * deltati) * np.exp(-(grid ** 2) / (2 * deltati ** 2))
+    gaussian_kernel = 1 / np.sqrt(2 * np.pi * deltati) * np.exp(-(grid ** 2) / (2 * deltati))
     fft_gaussian = fft.fft(gaussian_kernel)
 
     for i in range(N):
@@ -66,23 +66,23 @@ def simulate_sbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, eps=1e-6):
 
         # Iterate until convergence towards phi*
         for k in range(K):
-            fft_phi = fft.fft(np.exp(phi_values))
-            fft_h_k = fft_gaussian * fft_phi
+            fft_exp_phi = fft.fft(np.exp(phi_values))
+            fft_h_k = fft_gaussian * fft_exp_phi
             h_k = fft.ifft(fft_h_k).real  # h^k over all the grid
             
             y_k_index = np.argmin(np.log(h_k) + 0.5 * beta * (X_ - grid) ** 2)
             y_k = grid[y_k_index]
 
             # Compute the transport map
-            fft_grad_phi = 1j * fvf * fft_phi
+            fft_grad_phi = 1j * fvf * fft.fft(phi_values)
             grad_phi = fft.ifft(fft_grad_phi).real
 
             msX = grid + 1 / beta * grad_phi
-            msY_k = interp1d(msX, grid, fill_value='extrapolate')
-            msY = msY_k(X[:, i + 1])  # msY pushforward mu_{i+1}
+            msY_k_interpolate = interp1d(msX, grid, fill_value='extrapolate')
+            msY_k = msY_k_interpolate(X[:, i + 1])  # msY pushforward mu_{i+1}
 
             # Update the potential
-            msY_vect = msY[:, np.newaxis]
+            msY_vect = msY_k[:, np.newaxis]
             term_1 = np.log(np.mean(kernel(msY_vect - grid_vect, h) * weights_vect, axis=0))
             term_3 = (grid - y_k) ** 2 / (2 * deltati)
             phi_values_new = term_1 + term_2 + term_3 
@@ -93,21 +93,22 @@ def simulate_sbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, eps=1e-6):
                 
             phi_values = phi_values_new
 
-        fft_phi_star = fft.fft(np.exp(phi_values))
+        fft_exp_phi_star = fft.fft(np.exp(phi_values))
         for k in range(len(v_time_step_Euler) - 1):
             timeprev = v_time_step_Euler[k]
             timestep = v_time_step_Euler[k + 1] - v_time_step_Euler[k]
+            delta_t = deltati - timeprev
 
             # Compute h*
-            gaussian_kernel_star = 1 / np.sqrt(2 * np.pi * (deltati - timeprev)) * np.exp(
-                -(grid ** 2) / (2 * (deltati - timeprev) ** 2)
+            gaussian_kernel_star = 1 / np.sqrt(2 * np.pi * delta_t) * np.exp(
+                -(grid ** 2) / (2 * delta_t ** 2)
             )
             fft_gaussian_star = fft.fft(gaussian_kernel_star)
-            fft_h_star = fft_gaussian_star * fft_phi_star
+            fft_h_star = fft_gaussian_star * fft_exp_phi_star
             h_star = fft.ifft(fft_h_star).real
 
             # Compute msY* at time t via grid search
-            msY_star = np.argmin(np.log(h_star) + 0.5 * beta * (X_ - grid) ** 2)
+            msY_starindex = np.argmin(np.log(h_star) + 0.5 * beta * (X_ - grid) ** 2)
 
             # Compute the drift and volatility
             fft_log_h_star = fft.fft(np.log(h_star))
@@ -115,10 +116,10 @@ def simulate_sbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, eps=1e-6):
             fft_hessian_log_h_star = - fvf ** 2 * fft_log_h_star
             hessian_log_h_star = fft.ifft(fft_hessian_log_h_star).real
 
-            drift = grad_log_h_star[msY_star]
-            vol = 1 + 1 / beta * hessian_log_h_star[msY_star]
+            drift = grad_log_h_star[msY_starindex]
+            vol = 1 + 1 / beta * hessian_log_h_star[msY_starindex]
 
-            X_ += drift * timestep + Brownian[index_] * np.sqrt(vol * timestep)
+            X_ += drift * timestep + Brownian[index_] * np.sqrt(timestep) * np.abs(vol)
             index_ += 1
                 
         timeSeries[i + 1] = X_

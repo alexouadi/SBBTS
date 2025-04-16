@@ -27,6 +27,10 @@ def grad_kernel(x,h):
     return np.where(np.abs(x) < h, 4 * x *(h ** 2 - x ** 2), 0)
 
 
+def get_grid(X, n_points=1000, factor=2.0):
+    return np.linspace(X.min() - factor * X.std(), X.max() + factor * X.std())
+
+
 def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
     """
     Simulate 1 univariate time series via the SBBTS kernel.
@@ -63,7 +67,7 @@ def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
         else:
             weights[:] = 1 / M
         weights_vect = weights[:, np.newaxis]
-        weights_ratio = weights / np.sum(weights) if np.sum(weights) > 0 else 0.0
+        weights_ratio = weights / np.sum(weights) if np.sum(weights) > 0 else np.zeros_like(weights)
 
         # Initialization
         y_k = X_
@@ -74,8 +78,8 @@ def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
             # Solve y_i^k via grid search
             weights_one = np.exp((msY_k - y_k) ** 2 / (2 * deltati)) * weights_ratio
             weights_h_k = weights_one[:, np.newaxis] * np.exp(
-                (msY_k[:, np.newaxis] - grid_vect) ** 2 / (-2 * deltati)
-            )
+                (msY_k[:, np.newaxis] - grid_vect) ** 2 / (-2 * deltati))
+            
             h_k = np.mean(weights_h_k, axis=0)
             y_k_index = np.argmin(np.log(h_k) + 0.5 * beta * (X_ - grid) ** 2)
             y_k_new = grid[y_k_index]
@@ -83,7 +87,7 @@ def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
             # Update msY_k
             grad_phi_num = np.sum(grad_kernel(msY_k[:, np.newaxis] - grid_vect, h) * weights_vect, axis=0)
             grad_phi_den = np.sum(kernel(msY_k[:, np.newaxis] - grid_vect, h) * weights_vect, axis=0)
-            grad_phi = np.where(grad_phi_den != 0, grad_phi_num / grad_phi_den + (grid - y_k) / (2 * deltati), 0.0)
+            grad_phi = np.where(grad_phi_den != 0, grad_phi_num / grad_phi_den + (grid - y_k) / deltati, 0.0)
             
             msX = grid + 1 / beta * grad_phi
             msY_k_interpolate = interp1d(msX, grid, fill_value='extrapolate')
@@ -120,7 +124,7 @@ def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
             drift = grad_h_star / h_star if h_star > 0 else 0.0
             vol = 1 + 1 / beta * (hessian_h_star / h_star - (grad_h_star / h_star) ** 2) if h_star > 0 else 0.0
 
-            X_ += drift * timestep + Brownian[index_] * np.sqrt(np.abs(vol) * timestep)
+            X_ += drift * timestep + Brownian[index_] * np.sqrt(timestep) * np.abs(vol)
             index_ += 1
                 
         timeSeries[i + 1] = X_
