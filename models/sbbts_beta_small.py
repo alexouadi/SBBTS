@@ -77,6 +77,8 @@ def simulate_sbbts_sb(N, M, X, N_pi, deltati, grid, K, beta, eps=1e-6):
 
             # Compute the CDF and X_T
             F_h_nu_T = np.cumsum(h_nu_T) * dx
+            F_h_nu_T /= F_h_nu_T[-1]
+            
             F_sample = ECDF(X[:, i + 1])
             sort_samples = np.sort(np.unique(X[:, i + 1]))
             F_sample_inv = interp1d(F_sample(sort_samples), sort_samples, fill_value='extrapolate')
@@ -108,7 +110,7 @@ def simulate_sbbts_sb(N, M, X, N_pi, deltati, grid, K, beta, eps=1e-6):
             msY_star = grid[msY_star_index]
 
             # Compute the drift and volatility
-            log_h_star = interp1d(grid, no.log(h_star), fill_value='extrapolate')
+            log_h_star = interp1d(grid, np.log(h_star), fill_value='extrapolate')
             drift = first_derivate(log_h_star, msY_star)
             vol = 1 + 1 / beta *  second_derivate(log_h_star, msY_star)
 
