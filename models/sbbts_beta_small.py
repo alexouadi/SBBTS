@@ -2,7 +2,7 @@ import numpy as np
 import datetime
 import time
 from scipy.interpolate import interp1d
-from scipy.fft import fft, ifft, fftfreq
+from statsmodels.distributions.empirical_distribution import ECDF
 
 def kernel(x,h):
     """
@@ -22,7 +22,7 @@ def second_derivate(f, y, h=1e-6):
     return (f(y + h) - 2 * f(y) + f(y - h)) / (h ** 2)
 
 
-def simulate_sbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, eps=1e-6):
+def simulate_sbbts_sb(N, M, X, N_pi, deltati, grid, K, beta, eps=1e-6):
     """
     Simulate 1 univariate time series via the SBBTS kernel.
     :params N: number of time steps to generate, must be equal to (X.shape[1] - 1); [int]
@@ -55,64 +55,53 @@ def simulate_sbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, eps=1e-6):
     n = len(grid)
     grid_vect = grid[np.newaxis, :]
     dx = grid[1] - grid[0]
+
+    grid_expanded = grid[:, np.newaxis] - grid[np.newaxis, :]
+    gaussian_kernel = np.exp(-(grid_expanded ** 2) / (2 * deltati))
+    gaussian_kernel /= np.sum(gaussian_kernel, axis=0) * dx
     
-    gaussian_kernel = np.exp(-(grid ** 2) / (2 * deltati))
-    gaussian_kernel /= np.sum(gaussian_kernel) * dx
-    fft_gaussian = fft.fft(gaussian_kernel)
+    delta_t = (deltati - v_time_step_Euler)[:-1]
+    gaussian_kernel_star_ = np.exp(-(grid_expanded[:, :, np.newaxis] ** 2) / (2 * deltat[np.newaxis,: ]))
+    gaussian_kernel_star_ /= np.sum(gaussian_kernel_star_, axis=0) * dx
 
     for i in range(N):
-        if i > 0:
-            weights[:] *= kernel(X[:, i] - X_, h)
-        else:
-            weights[:] = 1 / M
-            
-        weights_ratio = weights / np.sum(weights) if np.sum(weights) > 0 else np.zeros_like(weights)
 
         # Initialization
-        phi_values = np.zeros(n)
-        phi = interp1d(grid, phi_values, fill_values='extrapolate')
+        y_0 = X_
+        h_T = np.ones(n)
 
         # Iterate until convergence towards phi*
         for k in range(K):
-            fft_exp_phi = fft.fft(np.exp(phi_values))
-            fft_h_0 = fft_gaussian * fft_exp_phi
-            h_0 = np.real(fft.ifft(fft_h_0)) * dx  # h^k over all the grid
-            
+            # Compute h_T * nu_T
+            h_nu_T = h_T * np.exp(-(grid - y_0) ** 2 / (2 * deltati))
+
+            # Compute the CDF and X_T
+            F_h_nu_T = np.cumsum(h_nu_T) * dx
+            F_sample = ECDF(X[:, i + 1])
+            sort_samples = np.sort(np.unique(X[:, i + 1]))
+            F_sample_inv = interp1d(F_sample(sort_samples), sort_samples, fill_value='extrapolate')
+            X_T = F_sample_inv(F_h_nu_T)
+
+            # Update h_T and h_0
+            h_T_new = np.exp(beta * np.cumsum(X_T - grid) * dx)
+            h_0 = gaussian_kernel @ h_T_new * dx            
+
+            # Update y_0
             y_0_index = np.argmin(np.log(h_0) + 0.5 * beta * (X_ - grid) ** 2)
             y_0 = grid[y_0_index]
-
-            # Compute the transport map
-            grad_phi = first_derivate(phi, grid)
-
-            msX = grid + 1 / beta * grad_phi
-            msY_T_interpolate = interp1d(msX, grid, fill_value='extrapolate')
-            msY_T = msY_T_interpolate(X[:, i + 1])  # msY pushforward mu_{i+1}
-
-            # Update the potential
-            msY_vect = msY_T[:, np.newaxis]
-            term_1 = np.log(np.mean(kernel(msY_vect - grid_vect, h) * weights_ratio[:, np.newaxis], axis=0))
-            term_2 = (grid - y_0) ** 2 / (2 * deltati)
-            phi_values_new = term_1 + term_2 
             
-            if np.max(np.abs(phi_values - phi_values_new)) < eps:  # convergence is reached
-                phi_values = phi_values_new
+            if np.max(np.abs(h_T - h_T_new)) < eps:  # convergence is reached
+                h_T = h_T_new
                 break
                 
-            phi_values = phi_values_new
-            phi = interp1d(grid, phi_values, fill_value='extrapolate')
+            h_T = h_T_new
 
-        fft_exp_phi_star = fft.fft(np.exp(phi_values))
         for k in range(len(v_time_step_Euler) - 1):
-            timeprev = v_time_step_Euler[k]
             timestep = v_time_step_Euler[k + 1] - v_time_step_Euler[k]
-            delta_t = deltati - timeprev
 
             # Compute h*
-            gaussian_kernel_star = np.exp(-(grid ** 2) / (2 * delta_t ** 2))
-            gaussian_kernel_star /= np.sum(gaussian_kernel_star) * dx
-            fft_gaussian_star = fft.fft(gaussian_kernel_star)
-            fft_h_star = fft_gaussian_star * fft_exp_phi_star
-            h_star = np.real(fft.ifft(fft_h_star)) * dx
+            gaussian_kernel_star = gaussian_kernel_star_[:, :, k]
+            h_star = gaussian_kernel_star @ h_T * dx
 
             # Compute msY* at time t via grid search
             msY_star_index = np.argmin(np.log(h_star) + 0.5 * beta * (X_ - grid) ** 2)
@@ -131,7 +120,7 @@ def simulate_sbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, eps=1e-6):
     return timeSeries
 
 
-def simusbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, M_simu, eps=1e-6):
+def simusbbts_sb(N, M, X, N_pi, deltati, grid, K, beta, M_simu, eps=1e-6):
     """
     Simulate M_simu univariate time series via the SBBTS kernel.
     :params N: number of time steps to generate, must be equal to (X.shape[1] - 1); [int]
@@ -153,7 +142,7 @@ def simusbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, M_simu, eps=1e-6):
     time1 = time.perf_counter()
     
     for k in range(M_simu):
-        data_sb[k] = simulate_sbbts_fft(N, M, X, N_pi, h, deltati, grid, K, beta, eps)
+        data_sb[k] = simulate_sbbts_sb(N, M, X, N_pi, deltati, grid, K, beta, eps)
         if k == 0:
             mm = (time.perf_counter() - time1) * (M_simu - 1) / 60
             st += datetime.timedelta(minutes=mm)
