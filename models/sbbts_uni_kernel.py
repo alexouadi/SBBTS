@@ -3,6 +3,7 @@ import numba as nb
 import datetime
 import time
 from scipy.interpolate import interp1d
+from collections import deque
 
 
 @nb.jit(nopython=True, cache=True)
@@ -25,7 +26,7 @@ def get_grid(X, n_points=1000, factor=2.0):
     return np.linspace(X.min() - factor * X.std(), X.max() + factor * X.std())
 
 
-def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
+def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K_markov, K, beta):
     """
     Simulate 1 univariate time series via the SBBTS kernel.
     :params N: number of time steps to generate, must be equal to (X.shape[1] - 1); [int]
@@ -35,6 +36,7 @@ def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
     :params h: kernel bandwidth, must be > 0; [float]
     :params deltati: time step between two consecutive observations in the time series; [float]
     :params grid: uniform spatial grid; [np.array]
+    :params K_markov: markovian order; [int]
     :params K: number of iteration to compute the potential phi*; [int]
     :params beta: cost parameter to control the volatility, must be > 0; [float]
     return: 1 time series of shape (N+1,); [np.array]
@@ -54,10 +56,25 @@ def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
     weights = np.ones(M)
     index_ = 0
     grid_vect = grid[np.newaxis, :]
+    last_K = deque(maxlen=K_markov)
 
     for i in range(N):
         if i > 0:
+            if len(last_K) == K_markov:
+                X_oldest = last_K[0]
+                kernel_oldest = kernel(X[:, i - K_markov] - X_oldest, h)
+
+                if np.any(kernel_oldest == 0):
+                    weights = np.ones(M)
+                    ind_ref = i - K_markov
+                    for j in range(1, K_markov):
+                        weights *= kernel(X[:, ind_ref + j] - last_K[j], h)
+                else:
+                    weights /= kernel_oldest
+                    
+            last_K.append(X_)
             weights[:] *= kernel(X[:, i] - X_, h)
+
         else:
             weights[:] = 1 / M
             
@@ -67,6 +84,7 @@ def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
         # Initialization
         y_0 = X_
         msY_T = X[:, i + 1].copy()
+        grad_phi = np.zeors(len(grid))
 
         # Iterate until convergence towards phi*
         for k in range(K):
@@ -82,15 +100,18 @@ def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
             # Update msY_k
             grad_phi_num = np.sum(grad_kernel(msY_T[:, np.newaxis] - grid_vect, h) * weights_vect, axis=0)
             grad_phi_den = np.sum(kernel(msY_T[:, np.newaxis] - grid_vect, h) * weights_vect, axis=0)
-            grad_phi = np.where(grad_phi_den != 0, grad_phi_num / grad_phi_den + (grid - y_0) / deltati, 0.0)
+            grad_phi_new = np.where(grad_phi_den != 0, grad_phi_num / grad_phi_den + (grid - y_0) / deltati, 0.0)
             
-            msX = grid + 1 / beta * grad_phi
+            msX = grid + 1 / beta * grad_phi_new
             msY_T_interpolate = interp1d(msX, grid, fill_value='extrapolate')
 
             # Update y_k and msY_k
             y_0 = y_0_new
-            msY_T = msY_T_interpolate(X[:, i + 1])  # msY_k pushforward mu_{i+1|0:i}
-            
+            msY_T = msY_T_interpolate(X[:, i + 1])  # msY_k pushforward mu_{i+1|0:i
+
+            if np.max(np.abs(grad_phi_new - grad_phi)) <= 1e-5:
+                break
+            grad_phi = grad_phi_new
 
         weights_one_star = np.exp((msY_T - y_T) ** 2 / (2 * deltati)) * weights_ratio
         coeff_exp = (msY_T[:, np.newaxis] - grid_vect) ** 2
@@ -100,23 +121,22 @@ def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
             delta_t = deltati - timeprev
 
             # Compute Y* at time t
-            weights_h_star = weights_one_star[:, np.newaxis] * np.exp(coeff_exp / (-2 * delta_t))
-            h_star_ = np.mean(weights_h_star, axis=0)
-            msY_star_index = np.argmin(np.log(h_star_) + 0.5 * (X_ - grid) ** 2)
+            weights_h_t = weights_one_star[:, np.newaxis] * np.exp(coeff_exp / (-2 * delta_t))
+            h_t_ = np.mean(weights_h_t, axis=0)
 
             # Compute msY* at time t via grid search
-            msY_star_index = np.argmin(np.log(h_star) + 0.5 * beta * (X_ - grid) ** 2)
+            msY_star_index = np.argmin(np.log(h_t_) + 0.5 * beta * (X_ - grid) ** 2)
             msY_star = grid[msY_star_index]
 
             # Compute the drift and volatility
             weights_den = weights_one_star * np.exp((msY_T - msY_star) ** 2 / (-2 * delta_t))
-            h_star = np.sum(weights_den)
+            h_t = np.sum(weights_den)
             
-            grad_h_star = 1 / delta_t * np.sum(weights_den * (msY_T - msY_star))
-            hessian_h_star = np.sum(weights_den * (((msY_T - msY_star) / delta_t) ** 2 - 1 / delta_t))
+            grad_h_t = 1 / delta_t * np.sum(weights_den * (msY_T - msY_star))
+            hessian_h_t = np.sum(weights_den * (((msY_T - msY_star) / delta_t) ** 2 - 1 / delta_t))
 
-            drift = grad_h_star / h_star if h_star > 0 else 0.0
-            vol = 1 + 1 / beta * (hessian_h_star / h_star - (grad_h_star / h_star) ** 2) if h_star > 0 else 0.0
+            drift = grad_h_t / h_t if h_t > 0 else 0.0
+            vol = 1 + 1 / beta * (hessian_h_t / h_t - (grad_h_t / h_t) ** 2) if h_t > 0 else 0.0
 
             X_ += drift * timestep + Brownian[index_] * np.sqrt(timestep) * np.abs(vol)
             index_ += 1
@@ -126,7 +146,7 @@ def simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta):
     return timeSeries
 
 
-def simusbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta, M_simu):
+def simusbbts_kernel(N, M, X, N_pi, h, deltati, grid, K_markov, K, beta, M_simu):
     """
     Simulate M_simu univariate time series via the SBBTS kernel.
     :params N: number of time steps to generate, must be equal to (X.shape[1] - 1); [int]
@@ -136,6 +156,7 @@ def simusbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta, M_simu):
     :params h: kernel bandwidth, must be > 0; [float]
     :params deltati: time step between two consecutive observations in the time series; [float]
     :params grid: uniform spatial grid; [np.array]
+    :params K_markov: markovian order; [int]
     :params K: number of iteration to compute the potential phi*; [int]
     :params beta: cost parameter to control the volatility, must be > 0; [float]
     :params M_simu: number of time series to generate; [int]
@@ -147,7 +168,7 @@ def simusbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta, M_simu):
     time1 = time.perf_counter()
     
     for k in range(M_simu):
-        data_sb[k] = simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K, beta)
+        data_sb[k] = simulate_sbbts_kernel(N, M, X, N_pi, h, deltati, grid, K_markov, K, beta)
         if k == 0:
             mm = (time.perf_counter() - time1) * (M_simu - 1) / 60
             st += datetime.timedelta(minutes=mm)
