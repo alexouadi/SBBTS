@@ -2,15 +2,10 @@ import numpy as np
 
 class DataGenerator:
     def __init__(self, M: int) -> None:
-        """Initialize the module/class state.
-
-        Configure internal attributes used by the SBBTS model and utilities.
+        """Store the number of trajectories to simulate.
 
         Args:
-            M: Number of synthetic paths to generate.
-
-        Returns:
-            None.
+            M: Number of trajectories to generate.
         """
         self.M = M
 
@@ -26,32 +21,32 @@ class DataGenerator:
             S0: float = 1.0,
             v0: float = 1.0,
     ) -> np.ndarray:
-        """Generate heston.
+        """Generate multivariate Heston trajectories with stochastic volatility.
 
-    Args:
-            r_range: Sampling range for drift parameter r.
-            kappa_range: Sampling range for mean-reversion speed kappa.
-            theta_range: Sampling range for long-run variance theta.
-            rho_range: Sampling range for correlation rho.
-            xi_range: Sampling range for volatility-of-volatility xi.
-            N: Number of time points (or sequence length minus one, depending on context).
-            dt: Time discretization step.
+        Args:
+            r_range: Sampling interval for drift r.
+            kappa_range: Sampling interval for mean-reversion speed kappa.
+            theta_range: Sampling interval for long-run variance theta.
+            rho_range: Sampling interval for correlation rho.
+            xi_range: Sampling interval for vol-of-vol xi.
+            N: Number of time points.
+            dt: Time step.
             S0: Initial asset price.
-            v0: Initial variance level.
+            v0: Initial variance.
 
         Returns:
-            Computed output(s) produced by the function.
+            Array of simulated paths with price and variance channels.
         """
 
         def simulate_ig(mu: float, lam: float) -> float:
-            """Simulate ig.
+            """Sample one value from an inverse-Gaussian distribution.
 
-    Args:
-                mu: Mean parameter of the inverse-Gaussian proposal.
-                lam: Shape parameter of the inverse-Gaussian proposal.
+            Args:
+                mu: Mean parameter.
+                lam: Shape parameter.
 
             Returns:
-                Computed output(s) produced by the function.
+                One inverse-Gaussian random sample.
             """
             G = np.random.randn()
             Y = G ** 2
@@ -60,15 +55,15 @@ class DataGenerator:
             return X if U <= mu / (mu + X) else mu ** 2 / X
 
         def simulate_vol(kappa: float, theta: float, xi: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-            """Simulate vol.
+            """Simulate the variance process and auxiliary terms for one Heston path.
 
-    Args:
-                kappa: Mean-reversion speed.
-                theta: Long-run variance level.
+            Args:
+                kappa: Mean-reversion parameter kappa.
+                theta: Long-run variance parameter theta.
                 xi: Volatility-of-volatility parameter.
 
             Returns:
-                Computed output(s) produced by the function.
+                Tuple `(V, U, Z)` for variance path and latent terms.
             """
             V = np.zeros(N + 1)
             U = np.zeros(N)
@@ -84,17 +79,17 @@ class DataGenerator:
             return V, U, Z
 
         def simulate_h(r: float, kappa: float, theta: float, rho: float, xi: float) -> tuple[np.ndarray, np.ndarray]:
-            """Simulate h.
+            """Simulate a Heston price/variance path using correlated shocks.
 
-    Args:
-                r: Drift coefficient.
-                kappa: Mean-reversion speed.
-                theta: Long-run variance level.
-                rho: Correlation between price and variance shocks.
+            Args:
+                r: Drift parameter r.
+                kappa: Mean-reversion parameter kappa.
+                theta: Long-run variance parameter theta.
+                rho: Correlation between shocks.
                 xi: Volatility-of-volatility parameter.
 
             Returns:
-                Computed output(s) produced by the function.
+                Tuple `(S, V)` with simulated price and variance paths.
             """
             V, U, Z = simulate_vol(kappa, theta, xi)
             log_S = np.zeros(N + 1)

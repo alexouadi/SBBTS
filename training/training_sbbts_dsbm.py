@@ -8,19 +8,19 @@ from torch.utils.data import DataLoader, TensorDataset
 from early_stopping import EarlyStopping
 
 def get_loss(model, y_0, y_T, T, eps=None, t=None, safe_t=1e-2):
-    """Get loss.
+    """Compute the SBBTS score-matching loss on Brownian-bridge samples.
 
     Args:
-        model: Neural network model used to estimate the SBBTS drift.
-        y_0: Initial trajectory values or past observations.
-        y_T: Target values at the next time step / horizon T.
+        model: SBBTS drift model.
+        y_0: Current/past state used as initial condition.
+        y_T: y_T parameter.
         T: Final time horizon.
-        eps: Optional Gaussian noise used to sample Brownian-bridge states.
-        t: Continuous time variable.
-        safe_t: Small epsilon to avoid numerical issues near t=T.
+        eps: Optional Brownian-bridge noise sample.
+        t: Continuous time tensor.
+        safe_t: Small epsilon to avoid evaluating exactly at t=T.
 
     Returns:
-        Computed output(s) produced by the function.
+        Scalar training loss.
     """
     B, L, d = y_T.shape
     h_n = model.tf_encoder(y_0, training=True)
@@ -39,23 +39,23 @@ def get_loss(model, y_0, y_T, T, eps=None, t=None, safe_t=1e-2):
 
 def training_sbbts_dsbm(X, model, T, beta, K, n_epochs=100, batch_size=32, patience=10, delta=1e-3, safe_t=1e-2,
                         lr=1e-3):
-    """Training sbbts dsbm.
+    """Train the SBBTS drift network with iterative transport-map refinement.
 
     Args:
-        X: Input time-series samples.
-        model: Neural network model used to estimate the SBBTS drift.
+        X: Input time-series tensor or matrix.
+        model: SBBTS drift model.
         T: Final time horizon.
-        beta: Regularization/transport parameter beta from the SBBTS objective.
-        K: Number of outer transport-map update iterations.
-        n_epochs: Maximum number of epochs per outer iteration.
-        batch_size: Mini-batch size for optimization.
-        patience: Early-stopping patience in epochs.
-        delta: Minimum improvement threshold used by early stopping.
-        safe_t: Small epsilon to avoid numerical issues near t=T.
-        lr: Learning rate for the optimizer.
+        beta: SBBTS regularization parameter beta.
+        K: Number of outer training iterations.
+        n_epochs: Max epochs per outer iteration.
+        batch_size: Mini-batch size.
+        patience: Maximum epochs without validation improvement.
+        delta: Minimum validation improvement to reset patience.
+        safe_t: Small epsilon to avoid evaluating exactly at t=T.
+        lr: Optimizer learning rate.
 
     Returns:
-        Computed output(s) produced by the function.
+        Trained model instance.
     """
     device = X.device
     optimizer = optim.Adam(model.parameters(), lr=lr)
@@ -149,10 +149,10 @@ def training_sbbts_dsbm(X, model, T, beta, K, n_epochs=100, batch_size=32, patie
     return model, y_0.detach()[0, 0]
 
 def clean_memory(device):
-    """Clean memory.
+    """Release cached tensors and clear accelerator memory.
 
     Args:
-        device: Torch device used for allocations and cleanup.
+        device: Torch device used by the model.
 
     Returns:
         None.

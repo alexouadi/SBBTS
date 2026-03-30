@@ -3,16 +3,15 @@ import numpy as np
 import seaborn as sns
 
 def my_acf(my_arr, lag_len, lev=False):
-    """Compute empirical autocorrelation up to a fixed lag.
+    """Compute empirical autocorrelation values up to a fixed lag.
 
     Args:
-        my_arr: One-dimensional return series.
-        lag_len: Maximum lag to evaluate.
-        lev: If True, compute cross-correlation between squared and raw returns;
-            otherwise compute standard return autocorrelation.
+        my_arr: Return series.
+        lag_len: Maximum lag.
+        lev: If True, compute squared-return vs return correlation.
 
     Returns:
-        Array of length `lag_len + 1` containing autocorrelation values.
+        Array of autocorrelation values from lag 0 to `lag_len`.
     """
     x = my_arr
     x = x - x.mean()
@@ -32,14 +31,14 @@ def my_acf(my_arr, lag_len, lev=False):
     return acorr
 
 def plot_acf(x_data, x_sbbts, path=None, figsize=(8, 2), legend='SBBTS'):
-    """Plot mean ACF of returns and squared returns for real vs synthetic data.
+    """Plot mean autocorrelation of returns and squared returns for real vs synthetic series.
 
     Args:
-        x_data: Iterable of real return series.
-        x_sbbts: Iterable of synthetic return series.
-        path: Optional output path to save the figure.
+        x_data: Real data sample collection.
+        x_sbbts: Synthetic data sample collection.
+        path: Optional output/save path.
         figsize: Matplotlib figure size.
-        legend: Legend label for the synthetic curve.
+        legend: Legend label for synthetic data.
 
     Returns:
         None.
@@ -86,14 +85,14 @@ def plot_acf(x_data, x_sbbts, path=None, figsize=(8, 2), legend='SBBTS'):
     plt.show()
 
 def plot_return_dist(x_data, x_sbbts, bins=100, figsize=(8, 2), path=None):
-    """Plot return distribution.
+    """Plot return distribution histograms by cluster for real and synthetic data.
 
     Args:
-        x_data: Real return arrays grouped by cluster.
-        x_sbbts: Synthetic return arrays grouped by cluster.
-        bins: Number of histogram bins.
+        x_data: Real data sample collection.
+        x_sbbts: Synthetic data sample collection.
+        bins: Histogram bin count.
         figsize: Matplotlib figure size.
-        path: Optional output path to save the figure.
+        path: Optional output/save path.
 
     Returns:
         None.
@@ -136,11 +135,11 @@ def plot_corr_matrix(x_data, x_sbbts, annot=False, figsize=(11, 4), path=None):
     """Plot average cross-sectional correlation matrices for real and synthetic data.
 
     Args:
-        x_data: Real data tensor shaped (n_samples, n_steps, n_assets).
-        x_sbbts: Synthetic data tensor shaped (n_samples, n_steps, n_assets).
-        annot: Whether to annotate each heatmap cell with its value.
+        x_data: Real data sample collection.
+        x_sbbts: Synthetic data sample collection.
+        annot: Whether to annotate heatmap cells.
         figsize: Matplotlib figure size.
-        path: Optional output path to save the figure.
+        path: Optional output/save path.
 
     Returns:
         None.
@@ -149,13 +148,13 @@ def plot_corr_matrix(x_data, x_sbbts, annot=False, figsize=(11, 4), path=None):
     data_set2 = x_sbbts
 
     def calculate_correlation_matrix(data):
-        """Compute asset-by-asset correlation matrix for one sample.
+        """Compute an asset-by-asset correlation matrix for one sample.
 
         Args:
-            data: 2D array (time, assets).
+            data: Single sample matrix (time x assets).
 
         Returns:
-            Correlation matrix of shape (assets, assets).
+            Correlation matrix of shape (n_assets, n_assets).
         """
         return np.corrcoef(data, rowvar=False)
 

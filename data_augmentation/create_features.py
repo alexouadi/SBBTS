@@ -2,26 +2,26 @@ import numpy as np
 import pandas as pd
 
 def load_synth_data(path: str = 'data/return_synth.npy'):
-    """Load synth data.
+    """Load synthetic return data saved as a NumPy array.
 
     Args:
-        path: Filesystem path to the dataset/file.
+        path: Optional output/save path.
 
     Returns:
-        Computed output(s) produced by the function.
+        NumPy array loaded from disk.
     """
     return np.load(path)
 
 def _roll(series: pd.Series, window: int, func: str) -> pd.Series:
-    """Apply a lagged rolling statistic.
+    """Apply a lagged rolling statistic to avoid look-ahead bias.
 
     Args:
-        series: Univariate series on which rolling statistics are computed.
-        window: Rolling window length for feature extraction.
-        func: Rolling statistic to apply: sum, std, or mean.
+        series: series parameter.
+        window: Sliding window length.
+        func: func parameter.
 
     Returns:
-        Computed output(s) produced by the function.
+        Lagged rolling statistic as a pandas Series.
     """
     shifted = series.shift(1)  # dont tke the return of the day no leakage
 
@@ -34,11 +34,11 @@ def _roll(series: pd.Series, window: int, func: str) -> pd.Series:
     raise ValueError("func must be 'sum', 'std' or 'mean'")
 
 def binarize_target(df: pd.DataFrame, target_col: str) -> None:
-    """Binarize target.
+    """Convert a real-valued return target into a binary sign label in-place.
 
     Args:
-        df: DataFrame containing the target column to binarize.
-        target_col: Name of the target return column to convert into sign labels.
+        df: DataFrame to modify in place.
+        target_col: Target column to binarize.
 
     Returns:
         None.
@@ -47,14 +47,14 @@ def binarize_target(df: pd.DataFrame, target_col: str) -> None:
     df[target_col] = (series > 0).astype(int)
 
 def load_real_data(date_col: str, path: str = 'data/training_data.csv', ):
-    """Load real data.
+    """Load and reshape real return data from wide to long format.
 
     Args:
-        date_col: Name of the date column in the raw CSV file.
-        path: Filesystem path to the dataset/file.
+        date_col: Date column name in CSV.
+        path: Optional output/save path.
 
     Returns:
-        Computed output(s) produced by the function.
+        Tuple `(sp, returns_matrix)` with long-format DataFrame and raw return matrix.
     """
     sp = pd.read_csv(path).sort_values(by=date_col)
     returns_matrix = sp.copy()[
@@ -78,18 +78,18 @@ def make_path_dataframe(
         lag_zscore_horizons: tuple = (3, 5, 10, 21),
         lag_market_return_horizons: tuple = (1,),
 ) -> pd.DataFrame:
-    """Make path dataframe.
+    """Build a feature DataFrame for one synthetic path with lagged statistics.
 
     Args:
-        path_returns: Single synthetic return path (time x assets).
-        path_id: Identifier of the synthetic path in the output table.
-        cum_horizons: Horizons used to compute lagged cumulative returns.
-        vol_horizons: Horizons used to compute lagged rolling volatility.
-        lag_zscore_horizons: Horizons used for lagged z-score features.
-        lag_market_return_horizons: Horizons for lagged market-average return features.
+        path_returns: Synthetic return matrix for one path.
+        path_id: Identifier of the synthetic path.
+        cum_horizons: Horizons for lagged cumulative-return features.
+        vol_horizons: Horizons for lagged volatility features.
+        lag_zscore_horizons: Horizons for lagged z-score features.
+        lag_market_return_horizons: Horizons for lagged market-return features.
 
     Returns:
-        Computed output(s) produced by the function.
+        Feature DataFrame for one synthetic path.
     """
     if path_returns.ndim != 2:
         raise ValueError("path_returns must be 2‑D (n_days, n_instr)")
@@ -167,18 +167,18 @@ def make_real_dataframe(
         lag_zscore_horizons: tuple = (3, 5, 10, 21),
         lag_market_return_horizons: tuple = (1,),
 ) -> pd.DataFrame:
-    """Make real dataframe.
+    """Build the full feature table from real returns and market-level covariates.
 
     Args:
-        sp_returns: Long-format real return DataFrame.
-        returns_matrix: Wide matrix of returns aligned with sp_returns timestamps.
-        cum_horizons: Horizons used to compute lagged cumulative returns.
-        vol_horizons: Horizons used to compute lagged rolling volatility.
-        lag_zscore_horizons: Horizons used for lagged z-score features.
-        lag_market_return_horizons: Horizons for lagged market-average return features.
+        sp_returns: Long-format real return dataframe.
+        returns_matrix: Wide real return matrix.
+        cum_horizons: Horizons for lagged cumulative-return features.
+        vol_horizons: Horizons for lagged volatility features.
+        lag_zscore_horizons: Horizons for lagged z-score features.
+        lag_market_return_horizons: Horizons for lagged market-return features.
 
     Returns:
-        Computed output(s) produced by the function.
+        Feature DataFrame built from real market data.
     """
     if sp_returns.ndim != 2:
         raise ValueError("path_returns must be 2‑D (n_days, n_instr)")
@@ -253,17 +253,17 @@ def make_real_dataframe(
     return df[cols]
 
 def trading_strat(pred, real, day_start, normalise=True, periods_per_year=252):
-    """Trading strat.
+    """Compute classification and trading metrics from predictions and realized returns.
 
     Args:
-        pred: Predicted probabilities or scores for next-day direction.
-        real: Realized next-day returns used as ground truth.
-        day_start: Index offset where backtest evaluation starts.
-        normalise: If True, annualize Sharpe-like metrics.
-        periods_per_year: Number of periods used for annualization.
+        pred: Predicted probabilities/scores.
+        real: Realized returns.
+        day_start: Start index used for evaluation.
+        normalise: If True, annualize performance metrics.
+        periods_per_year: Periods per year for annualization.
 
     Returns:
-        Computed output(s) produced by the function.
+        Tuple of evaluation metrics (accuracy, log-loss, AUC, PnL stats).
     """
     pred = np.asarray(pred).ravel()
     real = np.asarray(real).ravel()
