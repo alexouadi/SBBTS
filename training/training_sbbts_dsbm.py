@@ -7,11 +7,8 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from early_stopping import EarlyStopping
 
-
 def get_loss(model, y_0, y_T, T, eps=None, t=None, safe_t=1e-2):
     """Get loss.
-
-    Get loss. This routine is part of the SBBTS workflow and related utilities.
 
     Args:
         model: Neural network model used to estimate the SBBTS drift.
@@ -40,12 +37,9 @@ def get_loss(model, y_0, y_T, T, eps=None, t=None, safe_t=1e-2):
     loss = ((score_pred - score_target) ** 2).sum(dim=-1)
     return loss.mean()
 
-
 def training_sbbts_dsbm(X, model, T, beta, K, n_epochs=100, batch_size=32, patience=10, delta=1e-3, safe_t=1e-2,
                         lr=1e-3):
     """Training sbbts dsbm.
-
-    Training sbbts dsbm. This routine is part of the SBBTS workflow and related utilities.
 
     Args:
         X: Input time-series samples.
@@ -154,11 +148,8 @@ def training_sbbts_dsbm(X, model, T, beta, K, n_epochs=100, batch_size=32, patie
     y_0 = x_0[:1, :1] - 1 / beta * model.get_drift(t_0, x_0[:1, :1], h_n)  # 1, 1, d
     return model, y_0.detach()[0, 0]
 
-
 def clean_memory(device):
     """Clean memory.
-
-    Clean memory. This routine is part of the SBBTS workflow and related utilities.
 
     Args:
         device: Torch device used for allocations and cleanup.

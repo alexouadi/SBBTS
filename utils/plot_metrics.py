@@ -2,19 +2,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-
 def my_acf(my_arr, lag_len, lev=False):
-    """My acf.
-
-    My acf. This routine is part of the SBBTS workflow and related utilities.
+    """Compute empirical autocorrelation up to a fixed lag.
 
     Args:
-        my_arr: One-dimensional time series.
-        lag_len: Maximum lag used for autocorrelation computation.
-        lev: If True, compute correlation between squared and raw returns.
+        my_arr: One-dimensional return series.
+        lag_len: Maximum lag to evaluate.
+        lev: If True, compute cross-correlation between squared and raw returns;
+            otherwise compute standard return autocorrelation.
 
     Returns:
-        Computed output(s) produced by the function.
+        Array of length `lag_len + 1` containing autocorrelation values.
     """
     x = my_arr
     x = x - x.mean()
@@ -33,18 +31,15 @@ def my_acf(my_arr, lag_len, lev=False):
                 x[i + 1:].dot(x[i + 1:]) * x[: -(i + 1)].dot(x[: -(i + 1)]))
     return acorr
 
-
 def plot_acf(x_data, x_sbbts, path=None, figsize=(8, 2), legend='SBBTS'):
-    """Plot acf.
-
-    Plot acf. This routine is part of the SBBTS workflow and related utilities.
+    """Plot mean ACF of returns and squared returns for real vs synthetic data.
 
     Args:
-        x_data: Collection of real data trajectories.
-        x_sbbts: Collection of synthetic SBBTS trajectories.
-        path: Filesystem path to the dataset/file.
+        x_data: Iterable of real return series.
+        x_sbbts: Iterable of synthetic return series.
+        path: Optional output path to save the figure.
         figsize: Matplotlib figure size.
-        legend: Legend label used for synthetic series.
+        legend: Legend label for the synthetic curve.
 
     Returns:
         None.
@@ -90,18 +85,15 @@ def plot_acf(x_data, x_sbbts, path=None, figsize=(8, 2), legend='SBBTS'):
         plt.savefig(path, dpi=200, bbox_inches="tight")
     plt.show()
 
-
 def plot_return_dist(x_data, x_sbbts, bins=100, figsize=(8, 2), path=None):
-    """Plot return dist.
-
-    Plot return dist. This routine is part of the SBBTS workflow and related utilities.
+    """Plot return distribution.
 
     Args:
-        x_data: Collection of real data trajectories.
-        x_sbbts: Collection of synthetic SBBTS trajectories.
-        bins: Number of bins used in histogram plots.
+        x_data: Real return arrays grouped by cluster.
+        x_sbbts: Synthetic return arrays grouped by cluster.
+        bins: Number of histogram bins.
         figsize: Matplotlib figure size.
-        path: Filesystem path to the dataset/file.
+        path: Optional output path to save the figure.
 
     Returns:
         None.
@@ -140,35 +132,30 @@ def plot_return_dist(x_data, x_sbbts, bins=100, figsize=(8, 2), path=None):
         fig.savefig(path, dpi=300, bbox_inches='tight')
     plt.show()
 
-
 def plot_corr_matrix(x_data, x_sbbts, annot=False, figsize=(11, 4), path=None):
-    """Plot corr matrix.
-
-    Plot corr matrix. This routine is part of the SBBTS workflow and related utilities.
+    """Plot average cross-sectional correlation matrices for real and synthetic data.
 
     Args:
-        x_data: Collection of real data trajectories.
-        x_sbbts: Collection of synthetic SBBTS trajectories.
-        annot: Whether to display correlation values inside heatmap cells.
+        x_data: Real data tensor shaped (n_samples, n_steps, n_assets).
+        x_sbbts: Synthetic data tensor shaped (n_samples, n_steps, n_assets).
+        annot: Whether to annotate each heatmap cell with its value.
         figsize: Matplotlib figure size.
-        path: Filesystem path to the dataset/file.
+        path: Optional output path to save the figure.
 
     Returns:
-        Computed output(s) produced by the function.
+        None.
     """
     data_set1 = x_data
     data_set2 = x_sbbts
 
     def calculate_correlation_matrix(data):
-        """Calculate correlation matrix.
-
-        Calculate correlation matrix. This routine is part of the SBBTS workflow and related utilities.
+        """Compute asset-by-asset correlation matrix for one sample.
 
         Args:
-            data: Input parameter `data` used by this computation.
+            data: 2D array (time, assets).
 
         Returns:
-            Computed output(s) produced by the function.
+            Correlation matrix of shape (assets, assets).
         """
         return np.corrcoef(data, rowvar=False)
 

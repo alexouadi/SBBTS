@@ -3,7 +3,6 @@ import math
 import torch
 from torch import nn
 
-
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model: int, max_len: int = 5000):
 
@@ -13,7 +12,7 @@ class PositionalEncoding(nn.Module):
 
         Args:
             d_model: Internal embedding dimension used by the networks.
-            max_len: Input parameter `max_len` used by this computation.
+            max_len: Maximum sequence length supported by positional encodings.
 
         Returns:
             None.
@@ -36,16 +35,13 @@ class PositionalEncoding(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward.
 
-        Forward. This routine is part of the SBBTS workflow and related utilities.
-
-        Args:
-            x: Input parameter `x` used by this computation.
+    Args:
+            x: Input embedding tensor of shape (batch, length, d_model).
 
         Returns:
             Computed output(s) produced by the function.
         """
         return self.pe[:x.size(1)]
-
 
 class EncoderOnly(torch.nn.Module):
     def __init__(self, input_dim, d_model, nhead, n_layers, N, device):
@@ -76,11 +72,9 @@ class EncoderOnly(torch.nn.Module):
     def forward(self, y_past, training=False):
         """Forward.
 
-        Forward. This routine is part of the SBBTS workflow and related utilities.
-
-        Args:
+    Args:
             y_past: Past trajectory used as temporal context.
-            training: Input parameter `training` used by this computation.
+            training: Whether to use the causal mask for training-time encoding.
 
         Returns:
             Computed output(s) produced by the function.

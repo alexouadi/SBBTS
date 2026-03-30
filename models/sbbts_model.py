@@ -6,11 +6,8 @@ from torch import nn
 
 from encoder_only import EncoderOnly
 
-
 def get_timestep_embedding(timesteps, embedding_dim=128):
     """Get timestep embedding.
-
-    Get timestep embedding. This routine is part of the SBBTS workflow and related utilities.
 
     Args:
         timesteps: Tensor of time indices/timestamps to encode.
@@ -28,7 +25,6 @@ def get_timestep_embedding(timesteps, embedding_dim=128):
     if embedding_dim % 2 == 1:  # zero pad
         emb = F.pad(emb, [0, 1])
     return emb
-
 
 class MLP(torch.nn.Module):
     def __init__(self, input_dim, d_model, hidden_dim):
@@ -70,9 +66,7 @@ class MLP(torch.nn.Module):
     def forward(self, t, y, h):
         """Forward.
 
-        Forward. This routine is part of the SBBTS workflow and related utilities.
-
-        Args:
+    Args:
             t: Continuous time variable.
             y: Current state values.
             h: Context embedding from the temporal encoder.
@@ -84,7 +78,6 @@ class MLP(torch.nn.Module):
         y_embed = self.y_encoder(y)  # (B, L, d_model)
         y_emb = torch.cat([t_embed, y_embed, h], dim=-1)
         return self.cond_fusion(y_emb)  # (B, L, d)
-
 
 class ScoreNN(torch.nn.Module):
     def __init__(self, input_dim, d_model, hidden_dim, nhead, n_layers, L, device):
@@ -112,9 +105,7 @@ class ScoreNN(torch.nn.Module):
     def forward(self, t, y, y_past):
         """Forward.
 
-        Forward. This routine is part of the SBBTS workflow and related utilities.
-
-        Args:
+    Args:
             t: Continuous time variable.
             y: Current state values.
             y_past: Past trajectory used as temporal context.
@@ -124,7 +115,6 @@ class ScoreNN(torch.nn.Module):
         """
         h = self.tf_encoder(y_past)
         return self.get_drift(t, y, h)
-
 
 # for beta small
 class InverseMLP(torch.nn.Module):
@@ -167,9 +157,7 @@ class InverseMLP(torch.nn.Module):
     def forward(self, t, y):
         """Forward.
 
-        Forward. This routine is part of the SBBTS workflow and related utilities.
-
-        Args:
+    Args:
             t: Continuous time variable.
             y: Current state values.
 

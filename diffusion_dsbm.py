@@ -6,11 +6,8 @@ import torch
 
 from training.training_sbbts_dsbm import clean_memory
 
-
 def generate_dsbm_batch(N, X, model, y_0, N_pi, T, beta, M_simu, safe_t=1e-2, ):
     """Generate dsbm batch.
-
-    Generate dsbm batch. This routine is part of the SBBTS workflow and related utilities.
 
     Args:
         N: Number of time points (or sequence length minus one, depending on context).
@@ -68,11 +65,8 @@ def generate_dsbm_batch(N, X, model, y_0, N_pi, T, beta, M_simu, safe_t=1e-2, ):
 
     return sbbts_sample[:, 1:]
 
-
 def generate_dsbm(N, X, model, y_0, N_pi, T, beta, M_simu, N_batch, scale=1., safe_t=1e-2, exp=False):
     """Generate dsbm.
-
-    Generate dsbm. This routine is part of the SBBTS workflow and related utilities.
 
     Args:
         N: Number of time points (or sequence length minus one, depending on context).
@@ -84,9 +78,9 @@ def generate_dsbm(N, X, model, y_0, N_pi, T, beta, M_simu, N_batch, scale=1., sa
         beta: Regularization/transport parameter beta from the SBBTS objective.
         M_simu: Number of simulated trajectories.
         N_batch: Number of batches used during generation.
-        scale: Input parameter `scale` used by this computation.
+        scale: Multiplicative scaling applied to generated trajectories.
         safe_t: Small epsilon to avoid numerical issues near t=T.
-        exp: Input parameter `exp` used by this computation.
+        exp: If True, exponentiate generated log-returns to levels.
 
     Returns:
         Computed output(s) produced by the function.

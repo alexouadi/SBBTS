@@ -1,6 +1,5 @@
 import copy
 
-
 class EarlyStopping:
     def __init__(self, patience=5, delta=0.0):
         """Initialize the module/class state.
@@ -55,9 +54,7 @@ class EarlyStopping:
     def load_best_model(self, model):
         """Load best model.
 
-        Load best model. This routine is part of the SBBTS workflow and related utilities.
-
-        Args:
+    Args:
             model: Neural network model used to estimate the SBBTS drift.
 
         Returns:

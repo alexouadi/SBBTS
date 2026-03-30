@@ -1,6 +1,5 @@
 import numpy as np
 
-
 class DataGenerator:
     def __init__(self, M: int) -> None:
         """Initialize the module/class state.
@@ -8,7 +7,7 @@ class DataGenerator:
         Configure internal attributes used by the SBBTS model and utilities.
 
         Args:
-            M: Input parameter `M` used by this computation.
+            M: Number of synthetic paths to generate.
 
         Returns:
             None.
@@ -29,9 +28,7 @@ class DataGenerator:
     ) -> np.ndarray:
         """Generate heston.
 
-        Generate heston. This routine is part of the SBBTS workflow and related utilities.
-
-        Args:
+    Args:
             r_range: Sampling range for drift parameter r.
             kappa_range: Sampling range for mean-reversion speed kappa.
             theta_range: Sampling range for long-run variance theta.
@@ -49,11 +46,9 @@ class DataGenerator:
         def simulate_ig(mu: float, lam: float) -> float:
             """Simulate ig.
 
-            Simulate ig. This routine is part of the SBBTS workflow and related utilities.
-
-            Args:
-                mu: Input parameter `mu` used by this computation.
-                lam: Input parameter `lam` used by this computation.
+    Args:
+                mu: Mean parameter of the inverse-Gaussian proposal.
+                lam: Shape parameter of the inverse-Gaussian proposal.
 
             Returns:
                 Computed output(s) produced by the function.
@@ -67,9 +62,7 @@ class DataGenerator:
         def simulate_vol(kappa: float, theta: float, xi: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
             """Simulate vol.
 
-            Simulate vol. This routine is part of the SBBTS workflow and related utilities.
-
-            Args:
+    Args:
                 kappa: Mean-reversion speed.
                 theta: Long-run variance level.
                 xi: Volatility-of-volatility parameter.
@@ -93,9 +86,7 @@ class DataGenerator:
         def simulate_h(r: float, kappa: float, theta: float, rho: float, xi: float) -> tuple[np.ndarray, np.ndarray]:
             """Simulate h.
 
-            Simulate h. This routine is part of the SBBTS workflow and related utilities.
-
-            Args:
+    Args:
                 r: Drift coefficient.
                 kappa: Mean-reversion speed.
                 theta: Long-run variance level.

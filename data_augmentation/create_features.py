@@ -1,11 +1,8 @@
 import numpy as np
 import pandas as pd
 
-
 def load_synth_data(path: str = 'data/return_synth.npy'):
     """Load synth data.
-
-    Load synth data. This routine is part of the SBBTS workflow and related utilities.
 
     Args:
         path: Filesystem path to the dataset/file.
@@ -15,16 +12,13 @@ def load_synth_data(path: str = 'data/return_synth.npy'):
     """
     return np.load(path)
 
-
 def _roll(series: pd.Series, window: int, func: str) -> pd.Series:
-    """ roll.
-
-     roll. This routine is part of the SBBTS workflow and related utilities.
+    """Apply a lagged rolling statistic.
 
     Args:
-        series: Input parameter `series` used by this computation.
+        series: Univariate series on which rolling statistics are computed.
         window: Rolling window length for feature extraction.
-        func: Input parameter `func` used by this computation.
+        func: Rolling statistic to apply: sum, std, or mean.
 
     Returns:
         Computed output(s) produced by the function.
@@ -39,15 +33,12 @@ def _roll(series: pd.Series, window: int, func: str) -> pd.Series:
         return shifted.rolling(window).mean()
     raise ValueError("func must be 'sum', 'std' or 'mean'")
 
-
 def binarize_target(df: pd.DataFrame, target_col: str) -> None:
     """Binarize target.
 
-    Binarize target. This routine is part of the SBBTS workflow and related utilities.
-
     Args:
-        df: Input parameter `df` used by this computation.
-        target_col: Input parameter `target_col` used by this computation.
+        df: DataFrame containing the target column to binarize.
+        target_col: Name of the target return column to convert into sign labels.
 
     Returns:
         None.
@@ -55,11 +46,8 @@ def binarize_target(df: pd.DataFrame, target_col: str) -> None:
     series = df[target_col]
     df[target_col] = (series > 0).astype(int)
 
-
 def load_real_data(date_col: str, path: str = 'data/training_data.csv', ):
     """Load real data.
-
-    Load real data. This routine is part of the SBBTS workflow and related utilities.
 
     Args:
         date_col: Name of the date column in the raw CSV file.
@@ -82,7 +70,6 @@ def load_real_data(date_col: str, path: str = 'data/training_data.csv', ):
 
     return sp, returns_matrix
 
-
 def make_path_dataframe(
         path_returns: np.ndarray,
         path_id: int = 0,
@@ -93,15 +80,13 @@ def make_path_dataframe(
 ) -> pd.DataFrame:
     """Make path dataframe.
 
-    Make path dataframe. This routine is part of the SBBTS workflow and related utilities.
-
     Args:
-        path_returns: Input parameter `path_returns` used by this computation.
-        path_id: Input parameter `path_id` used by this computation.
-        cum_horizons: Input parameter `cum_horizons` used by this computation.
-        vol_horizons: Input parameter `vol_horizons` used by this computation.
-        lag_zscore_horizons: Input parameter `lag_zscore_horizons` used by this computation.
-        lag_market_return_horizons: Input parameter `lag_market_return_horizons` used by this computation.
+        path_returns: Single synthetic return path (time x assets).
+        path_id: Identifier of the synthetic path in the output table.
+        cum_horizons: Horizons used to compute lagged cumulative returns.
+        vol_horizons: Horizons used to compute lagged rolling volatility.
+        lag_zscore_horizons: Horizons used for lagged z-score features.
+        lag_market_return_horizons: Horizons for lagged market-average return features.
 
     Returns:
         Computed output(s) produced by the function.
@@ -174,7 +159,6 @@ def make_path_dataframe(
                                                                                            'extra.Return']
     return df[cols]
 
-
 def make_real_dataframe(
         sp_returns: pd.DataFrame,
         returns_matrix: np.ndarray,
@@ -185,15 +169,13 @@ def make_real_dataframe(
 ) -> pd.DataFrame:
     """Make real dataframe.
 
-    Make real dataframe. This routine is part of the SBBTS workflow and related utilities.
-
     Args:
-        sp_returns: Input parameter `sp_returns` used by this computation.
-        returns_matrix: Input parameter `returns_matrix` used by this computation.
-        cum_horizons: Input parameter `cum_horizons` used by this computation.
-        vol_horizons: Input parameter `vol_horizons` used by this computation.
-        lag_zscore_horizons: Input parameter `lag_zscore_horizons` used by this computation.
-        lag_market_return_horizons: Input parameter `lag_market_return_horizons` used by this computation.
+        sp_returns: Long-format real return DataFrame.
+        returns_matrix: Wide matrix of returns aligned with sp_returns timestamps.
+        cum_horizons: Horizons used to compute lagged cumulative returns.
+        vol_horizons: Horizons used to compute lagged rolling volatility.
+        lag_zscore_horizons: Horizons used for lagged z-score features.
+        lag_market_return_horizons: Horizons for lagged market-average return features.
 
     Returns:
         Computed output(s) produced by the function.
@@ -270,18 +252,15 @@ def make_real_dataframe(
 
     return df[cols]
 
-
 def trading_strat(pred, real, day_start, normalise=True, periods_per_year=252):
     """Trading strat.
 
-    Trading strat. This routine is part of the SBBTS workflow and related utilities.
-
     Args:
-        pred: Input parameter `pred` used by this computation.
-        real: Input parameter `real` used by this computation.
-        day_start: Input parameter `day_start` used by this computation.
-        normalise: Input parameter `normalise` used by this computation.
-        periods_per_year: Input parameter `periods_per_year` used by this computation.
+        pred: Predicted probabilities or scores for next-day direction.
+        real: Realized next-day returns used as ground truth.
+        day_start: Index offset where backtest evaluation starts.
+        normalise: If True, annualize Sharpe-like metrics.
+        periods_per_year: Number of periods used for annualization.
 
     Returns:
         Computed output(s) produced by the function.

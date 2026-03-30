@@ -4,15 +4,12 @@ import numpy as np
 import seaborn as sns
 from scipy.optimize import minimize
 
-
 @nb.jit(nopython=True, cache=True)
 def MLE_OU_robust(params, X, dt):
     """MLE OU robust.
 
-    MLE OU robust. This routine is part of the SBBTS workflow and related utilities.
-
     Args:
-        params: Input parameter `params` used by this computation.
+        params: Parameter vector optimized by maximum-likelihood estimation.
         X: Input time-series samples.
         dt: Time discretization step.
 
@@ -34,17 +31,14 @@ def MLE_OU_robust(params, X, dt):
 
     return -logL
 
-
 def plot_params_distrib_OU(X_data, X_sbts, dt=1 / 252, fix=False):
     """Plot params distrib OU.
 
-    Plot params distrib OU. This routine is part of the SBBTS workflow and related utilities.
-
     Args:
-        X_data: Input parameter `X_data` used by this computation.
-        X_sbts: Input parameter `X_sbts` used by this computation.
+        X_data: Collection of real trajectories used for parameter estimation.
+        X_sbts: Collection of SBTS synthetic trajectories used for comparison.
         dt: Time discretization step.
-        fix: Input parameter `fix` used by this computation.
+        fix: If True, compare against fixed reference parameters instead of sampled priors.
 
     Returns:
         None.
@@ -118,15 +112,12 @@ def plot_params_distrib_OU(X_data, X_sbts, dt=1 / 252, fix=False):
     fig.tight_layout()
     plt.show()
 
-
 @nb.jit(nopython=True, cache=True)
 def MLE_Heston_robust(params, X, dt):
     """MLE Heston robust.
 
-    MLE Heston robust. This routine is part of the SBBTS workflow and related utilities.
-
     Args:
-        params: Input parameter `params` used by this computation.
+        params: Parameter vector optimized by maximum-likelihood estimation.
         X: Input time-series samples.
         dt: Time discretization step.
 
@@ -170,11 +161,8 @@ def MLE_Heston_robust(params, X, dt):
     return logL
 
 
-
 def get_params_estimation(X, dt=1 / 252):
     """Get params estimation.
-
-    Get params estimation. This routine is part of the SBBTS workflow and related utilities.
 
     Args:
         X: Input time-series samples.
@@ -205,20 +193,17 @@ def get_params_estimation(X, dt=1 / 252):
         params_data[m] = result_data.x
     return params_data
 
-
 def plot_params_distrib_Heston(params_data, params_sbts, params_sbbts=None, q1=5, q2=95, fix=False, robust=False):
     """Plot params distrib Heston.
 
-    Plot params distrib Heston. This routine is part of the SBBTS workflow and related utilities.
-
     Args:
-        params_data: Input parameter `params_data` used by this computation.
-        params_sbts: Input parameter `params_sbts` used by this computation.
-        params_sbbts: Input parameter `params_sbbts` used by this computation.
-        q1: Input parameter `q1` used by this computation.
-        q2: Input parameter `q2` used by this computation.
-        fix: Input parameter `fix` used by this computation.
-        robust: Input parameter `robust` used by this computation.
+        params_data: Estimated parameters from real data.
+        params_sbts: Estimated parameters from SBTS samples.
+        params_sbbts: Estimated parameters from SBBTS samples (if provided).
+        q1: Lower percentile used to trim outliers.
+        q2: Upper percentile used to trim outliers.
+        fix: If True, compare against fixed reference parameters instead of sampled priors.
+        robust: Whether to use robust clipping in the visualization.
 
     Returns:
         None.
