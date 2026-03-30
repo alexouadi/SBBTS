@@ -1,13 +1,11 @@
 import numpy as np
 
-
 class DataGenerator:
     def __init__(self, M: int) -> None:
-        """
-        Parameters
-        ----------
-        M : int
-            Number of time series to generate.
+        """Store the number of trajectories to simulate.
+
+        Args:
+            M: Number of trajectories to generate.
         """
         self.M = M
 
@@ -23,31 +21,33 @@ class DataGenerator:
             S0: float = 1.0,
             v0: float = 1.0,
     ) -> np.ndarray:
-        """
-        Return Heston data following the scheme defined in arxiv.org/pdf/2412.11264.
+        """Generate multivariate Heston trajectories with stochastic volatility.
 
-        Parameters
-        ----------
-        r_range, kappa_range, theta_range, rho_range, xi_range : list of two floats
-            Parameter bounds.
-        N : int
-            Length of each series.
-        dt : float, optional
-            Time step.
-        S0 : float, optional
-            Initial asset price.
-        v0 : float, optional
-            Initial variance.
+        Args:
+            r_range: Sampling interval for drift r.
+            kappa_range: Sampling interval for mean-reversion speed kappa.
+            theta_range: Sampling interval for long-run variance theta.
+            rho_range: Sampling interval for correlation rho.
+            xi_range: Sampling interval for vol-of-vol xi.
+            N: Number of time points.
+            dt: Time step.
+            S0: Initial asset price.
+            v0: Initial variance.
 
-        Returns
-        -------
-        np.ndarray
-            Array of shape (M, N+1, 2) where the last dimension contains
-            ``price`` and ``variance``.
+        Returns:
+            Array of simulated paths with price and variance channels.
         """
 
         def simulate_ig(mu: float, lam: float) -> float:
-            """Inverse Gaussian sampler (Michael?Schucany?Haas method)."""
+            """Sample one value from an inverse-Gaussian distribution.
+
+            Args:
+                mu: Mean parameter.
+                lam: Shape parameter.
+
+            Returns:
+                One inverse-Gaussian random sample.
+            """
             G = np.random.randn()
             Y = G ** 2
             X = mu + (0.5 / lam) * (mu ** 2 * Y - mu * np.sqrt(4 * mu * lam * Y + (mu * Y) ** 2))
@@ -55,6 +55,16 @@ class DataGenerator:
             return X if U <= mu / (mu + X) else mu ** 2 / X
 
         def simulate_vol(kappa: float, theta: float, xi: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+            """Simulate the variance process and auxiliary terms for one Heston path.
+
+            Args:
+                kappa: Mean-reversion parameter kappa.
+                theta: Long-run variance parameter theta.
+                xi: Volatility-of-volatility parameter.
+
+            Returns:
+                Tuple `(V, U, Z)` for variance path and latent terms.
+            """
             V = np.zeros(N + 1)
             U = np.zeros(N)
             Z = np.zeros(N)
@@ -69,6 +79,18 @@ class DataGenerator:
             return V, U, Z
 
         def simulate_h(r: float, kappa: float, theta: float, rho: float, xi: float) -> tuple[np.ndarray, np.ndarray]:
+            """Simulate a Heston price/variance path using correlated shocks.
+
+            Args:
+                r: Drift parameter r.
+                kappa: Mean-reversion parameter kappa.
+                theta: Long-run variance parameter theta.
+                rho: Correlation between shocks.
+                xi: Volatility-of-volatility parameter.
+
+            Returns:
+                Tuple `(S, V)` with simulated price and variance paths.
+            """
             V, U, Z = simulate_vol(kappa, theta, xi)
             log_S = np.zeros(N + 1)
             log_S[0] = np.log(S0)

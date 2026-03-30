@@ -2,8 +2,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-
 def my_acf(my_arr, lag_len, lev=False):
+    """Compute empirical autocorrelation values up to a fixed lag.
+
+    Args:
+        my_arr: Return series.
+        lag_len: Maximum lag.
+        lev: If True, compute squared-return vs return correlation.
+
+    Returns:
+        Array of autocorrelation values from lag 0 to `lag_len`.
+    """
     x = my_arr
     x = x - x.mean()
     acorr = np.empty(lag_len + 1)
@@ -21,8 +30,19 @@ def my_acf(my_arr, lag_len, lev=False):
                 x[i + 1:].dot(x[i + 1:]) * x[: -(i + 1)].dot(x[: -(i + 1)]))
     return acorr
 
-
 def plot_acf(x_data, x_sbbts, path=None, figsize=(8, 2), legend='SBBTS'):
+    """Plot mean autocorrelation of returns and squared returns for real vs synthetic series.
+
+    Args:
+        x_data: Real data sample collection.
+        x_sbbts: Synthetic data sample collection.
+        path: Optional output/save path.
+        figsize: Matplotlib figure size.
+        legend: Legend label for synthetic data.
+
+    Returns:
+        None.
+    """
     fig, ax = plt.subplots(1, 2, figsize=figsize)
 
     lag = 60
@@ -64,8 +84,19 @@ def plot_acf(x_data, x_sbbts, path=None, figsize=(8, 2), legend='SBBTS'):
         plt.savefig(path, dpi=200, bbox_inches="tight")
     plt.show()
 
-
 def plot_return_dist(x_data, x_sbbts, bins=100, figsize=(8, 2), path=None):
+    """Plot return distribution histograms by cluster for real and synthetic data.
+
+    Args:
+        x_data: Real data sample collection.
+        x_sbbts: Synthetic data sample collection.
+        bins: Histogram bin count.
+        figsize: Matplotlib figure size.
+        path: Optional output/save path.
+
+    Returns:
+        None.
+    """
     if len(x_data) != len(x_sbbts):
         raise ValueError('diff_real and diff_fake must have the same length')
 
@@ -100,12 +131,31 @@ def plot_return_dist(x_data, x_sbbts, bins=100, figsize=(8, 2), path=None):
         fig.savefig(path, dpi=300, bbox_inches='tight')
     plt.show()
 
-
 def plot_corr_matrix(x_data, x_sbbts, annot=False, figsize=(11, 4), path=None):
+    """Plot average cross-sectional correlation matrices for real and synthetic data.
+
+    Args:
+        x_data: Real data sample collection.
+        x_sbbts: Synthetic data sample collection.
+        annot: Whether to annotate heatmap cells.
+        figsize: Matplotlib figure size.
+        path: Optional output/save path.
+
+    Returns:
+        None.
+    """
     data_set1 = x_data
     data_set2 = x_sbbts
 
     def calculate_correlation_matrix(data):
+        """Compute an asset-by-asset correlation matrix for one sample.
+
+        Args:
+            data: Single sample matrix (time x assets).
+
+        Returns:
+            Correlation matrix of shape (n_assets, n_assets).
+        """
         return np.corrcoef(data, rowvar=False)
 
     correlation_matrices_set1 = np.array(

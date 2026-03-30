@@ -8,8 +8,21 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from early_stopping import EarlyStopping
 
-
 def get_loss(model, y_0, y_T, T, eps=None, t=None, safe_t=1e-2):
+    """Compute the SBBTS score-matching loss on Brownian-bridge samples.
+
+    Args:
+        model: SBBTS drift model.
+        y_0: Current/past state used as initial condition.
+        y_T: y_T parameter.
+        T: Final time horizon.
+        eps: Optional Brownian-bridge noise sample.
+        t: Continuous time tensor.
+        safe_t: Small epsilon to avoid evaluating exactly at t=T.
+
+    Returns:
+        Scalar training loss.
+    """
     B, L, d = y_T.shape
     h_n = model.tf_encoder(y_0, training=True)
     if eps is None:
@@ -24,8 +37,24 @@ def get_loss(model, y_0, y_T, T, eps=None, t=None, safe_t=1e-2):
     score_target = (y_T - y_t) / (T - t)
     return ((score_target - score_pred) ** 2).sum(dim=-1).mean()
 
-
 def training_sbbts_dsbm_inv(X, model, model_inv, T, beta, K, n_epochs=100, batch_size=32, safe_t=1e-2, lr=1e-3):
+    """Train forward and inverse SBBTS models with alternating updates.
+
+    Args:
+        X: Input time-series tensor or matrix.
+        model: SBBTS drift model.
+        model_inv: Inverse model used in alternating training.
+        T: Final time horizon.
+        beta: SBBTS regularization parameter beta.
+        K: Number of outer training iterations.
+        n_epochs: Max epochs per outer iteration.
+        batch_size: Mini-batch size.
+        safe_t: Small epsilon to avoid evaluating exactly at t=T.
+        lr: Optimizer learning rate.
+
+    Returns:
+        Tuple `(model, model_inv)` after training.
+    """
     device = X.device
     optimizer = optim.Adam(model.parameters(), lr=lr)
     optimizer_inv = optim.Adam(model_inv.parameters(), lr=lr)
@@ -122,8 +151,15 @@ def training_sbbts_dsbm_inv(X, model, model_inv, T, beta, K, n_epochs=100, batch
     y_0 = model_inv(t_0, x_0[:1, :1])  # 1, 1, d
     return model, y_0.detach()[0, 0]
 
-
 def clean_memory(device):
+    """Release cached tensors and clear accelerator memory.
+
+    Args:
+        device: Torch device used by the model.
+
+    Returns:
+        None.
+    """
     gc.collect()
     if device != torch.device('cpu'):
         torch.cuda.set_device(device)

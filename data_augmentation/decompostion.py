@@ -6,12 +6,28 @@ from sklearn.mixture import GaussianMixture
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
-
 def marchenko_pastur_lambda_plus(n, d, sigma2=1.0):
+    """Compute the Marchenko-Pastur upper eigenvalue threshold used to retain PCA factors.
+
+    Args:
+        n: Number of observations.
+        d: Number of assets/features.
+        sigma2: Noise variance used in MP threshold.
+
+    Returns:
+        Scalar λ+ threshold.
+    """
     return sigma2 * (1.0 + np.sqrt(d / n)) ** 2
 
-
 def get_decomposition(X):
+    """Decompose standardized returns into common factors and idiosyncratic residuals.
+
+    Args:
+        X: Input time-series tensor or matrix.
+
+    Returns:
+        Tuple `(F, F_scaled, P_m, Z, mu_hat, sigma_hat, eigvals_m, eigvals)`.
+    """
     n, d = X.shape
     mu_hat = X.mean(axis=0)
     sigma_hat = X.std(axis=0, ddof=1)
@@ -38,8 +54,18 @@ def get_decomposition(X):
     Z = X_bar - F @ P_m.T  # (n, d)
     return F, F_scaled, P_m, Z, mu_hat, sigma_hat, eigvals_m, eigvals
 
-
 def get_cluster(F_scaled, eigvals_m, window, nc=3):
+    """Cluster retained PCA factors using moments and eigenvalue-based features.
+
+    Args:
+        F_scaled: Scaled PCA factor matrix.
+        eigvals_m: Retained eigenvalues.
+        window: Sliding window length.
+        nc: Number of clusters.
+
+    Returns:
+        Tuple `(cluster_sets, labels)` for factor clusters.
+    """
     n, m = F_scaled.shape
     feats = []
 
@@ -76,8 +102,20 @@ def get_cluster(F_scaled, eigvals_m, window, nc=3):
 
     return cluster_sets, labels
 
-
 def get_F_synth(clusters_synth, labels, eigvals_m, window, m, M_f):
+    """Reconstruct synthetic factor tensor from cluster-wise generated windows.
+
+    Args:
+        clusters_synth: Generated windows per cluster.
+        labels: Cluster assignment per factor.
+        eigvals_m: Retained eigenvalues.
+        window: Sliding window length.
+        m: Number of retained factors.
+        M_f: Number of synthetic factor paths.
+
+    Returns:
+        Synthetic factor tensor of shape (M_f, window, m).
+    """
     F_synth = np.zeros((M_f, window, m))
     cluster_index = np.zeros(len(clusters_synth), dtype=int)
     for k, ind in enumerate(labels):
@@ -88,8 +126,19 @@ def get_F_synth(clusters_synth, labels, eigvals_m, window, m, M_f):
     rescale = np.sqrt(np.where(eigvals_m <= 0, 1e-12, eigvals_m)).reshape((1, -1))
     return F_synth * rescale
 
-
 def fit_Z_gmm(Z, n_components=2, random_state=None, max_iter=200, tol=1e-4):
+    """Fit a univariate Gaussian Mixture Model to each residual dimension.
+
+    Args:
+        Z: Residual matrix.
+        n_components: Number of mixture components.
+        random_state: Random seed.
+        max_iter: Maximum EM iterations.
+        tol: EM convergence tolerance.
+
+    Returns:
+        List of fitted mixture parameters for each residual dimension.
+    """
     n_assets = Z.shape[1]
     fitted = []
 
@@ -117,8 +166,17 @@ def fit_Z_gmm(Z, n_components=2, random_state=None, max_iter=200, tol=1e-4):
 
     return fitted
 
-
 def get_Z_synth_gmm(Z_fitted, F_synth, d):
+    """Sample synthetic idiosyncratic residuals from the fitted per-asset GMMs.
+
+    Args:
+        Z_fitted: Fitted GMM parameters per residual dimension.
+        F_synth: Synthetic factor tensor.
+        d: Number of assets/features.
+
+    Returns:
+        Synthetic residual tensor of shape (n_paths, n_steps, d).
+    """
     n_paths, n_steps = F_synth.shape[:2]
     Z_synth = np.zeros((n_paths, n_steps, d))
 
@@ -141,8 +199,19 @@ def get_Z_synth_gmm(Z_fitted, F_synth, d):
 
     return Z_synth
 
-
 def reconstruct_X(F_synth, Z_synth, P_m, mu_hat, sigma_hat):
+    """Recompose synthetic returns from synthetic factors and residuals, then unscale.
+
+    Args:
+        F_synth: Synthetic factor tensor.
+        Z_synth: Synthetic residual tensor.
+        P_m: PCA loading matrix.
+        mu_hat: Empirical mean used for scaling.
+        sigma_hat: Empirical std used for scaling.
+
+    Returns:
+        Synthetic return tensor in original data scale.
+    """
     X_synth = F_synth @ P_m.T + Z_synth
     X_synth = X_synth * sigma_hat + mu_hat
     return X_synth

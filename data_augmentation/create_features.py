@@ -1,24 +1,27 @@
 import numpy as np
 import pandas as pd
 
-
 def load_synth_data(path: str = 'data/return_synth.npy'):
+    """Load synthetic return data saved as a NumPy array.
+
+    Args:
+        path: Optional output/save path.
+
+    Returns:
+        NumPy array loaded from disk.
+    """
     return np.load(path)
 
-
 def _roll(series: pd.Series, window: int, func: str) -> pd.Series:
-    """
-    Rolling aggregation on a series shifted by one day (no leakage).
+    """Apply a lagged rolling statistic to avoid look-ahead bias.
 
-    Parameters
-    ----------
-    series : pd.Series
-    window : int
-    func   : {'sum', 'std', 'mean'}
+    Args:
+        series: series parameter.
+        window: Sliding window length.
+        func: func parameter.
 
-    Returns
-    -------
-    pd.Series
+    Returns:
+        Lagged rolling statistic as a pandas Series.
     """
     shifted = series.shift(1)  # dont tke the return of the day no leakage
 
@@ -30,15 +33,29 @@ def _roll(series: pd.Series, window: int, func: str) -> pd.Series:
         return shifted.rolling(window).mean()
     raise ValueError("func must be 'sum', 'std' or 'mean'")
 
-
 def binarize_target(df: pd.DataFrame, target_col: str) -> None:
-    """Convert the target_col columns to a binary
-    classification target (sign>0 → 1, else 0). The DataFrame is modified in‑place."""
+    """Convert a real-valued return target into a binary sign label in-place.
+
+    Args:
+        df: DataFrame to modify in place.
+        target_col: Target column to binarize.
+
+    Returns:
+        None.
+    """
     series = df[target_col]
     df[target_col] = (series > 0).astype(int)
 
-
 def load_real_data(date_col: str, path: str = 'data/training_data.csv', ):
+    """Load and reshape real return data from wide to long format.
+
+    Args:
+        date_col: Date column name in CSV.
+        path: Optional output/save path.
+
+    Returns:
+        Tuple `(sp, returns_matrix)` with long-format DataFrame and raw return matrix.
+    """
     sp = pd.read_csv(path).sort_values(by=date_col)
     returns_matrix = sp.copy()[
         [f for f in sp.columns if f != date_col]].to_numpy()  # exclude the date columns and retain only the returns
@@ -53,7 +70,6 @@ def load_real_data(date_col: str, path: str = 'data/training_data.csv', ):
 
     return sp, returns_matrix
 
-
 def make_path_dataframe(
         path_returns: np.ndarray,
         path_id: int = 0,
@@ -62,20 +78,18 @@ def make_path_dataframe(
         lag_zscore_horizons: tuple = (3, 5, 10, 21),
         lag_market_return_horizons: tuple = (1,),
 ) -> pd.DataFrame:
-    """
-    Convert one simulation path into a causal feature DataFrame.
+    """Build a feature DataFrame for one synthetic path with lagged statistics.
 
-    Returns a DataFrame sorted by (perimeter.Date, perimeter.instr_id) with
-    columns:
-    - perimeter.path_id
-    - perimeter.Date
-    - perimeter.instr_id
-    - target.target
-    - extra.Return
-    - feature.return_t-{h}_market
-    - feature.ret_{h}d
-    - feature.vol_{h}d
-    - feature.ret_zscore_{h}d
+    Args:
+        path_returns: Synthetic return matrix for one path.
+        path_id: Identifier of the synthetic path.
+        cum_horizons: Horizons for lagged cumulative-return features.
+        vol_horizons: Horizons for lagged volatility features.
+        lag_zscore_horizons: Horizons for lagged z-score features.
+        lag_market_return_horizons: Horizons for lagged market-return features.
+
+    Returns:
+        Feature DataFrame for one synthetic path.
     """
     if path_returns.ndim != 2:
         raise ValueError("path_returns must be 2‑D (n_days, n_instr)")
@@ -145,7 +159,6 @@ def make_path_dataframe(
                                                                                            'extra.Return']
     return df[cols]
 
-
 def make_real_dataframe(
         sp_returns: pd.DataFrame,
         returns_matrix: np.ndarray,
@@ -154,21 +167,18 @@ def make_real_dataframe(
         lag_zscore_horizons: tuple = (3, 5, 10, 21),
         lag_market_return_horizons: tuple = (1,),
 ) -> pd.DataFrame:
-    """
-    Inputs :
-    sp_returns : Long Format DataFrame of returns
-    returns_matrix : numpy matrix of returns in long format
-    
-    Returns a DataFrame sorted by (perimeter.Date, perimeter.instr_id) with
-    columns:
-    - perimeter.path_id
-    - perimeter.Date
-    - perimeter.instr_id
-    - target.target
-    - feature.return_t-{h}_market
-    - feature_ret_{h}d
-    - feature.vol_{h}d
-    - feature.ret_zscore_{h}d
+    """Build the full feature table from real returns and market-level covariates.
+
+    Args:
+        sp_returns: Long-format real return dataframe.
+        returns_matrix: Wide real return matrix.
+        cum_horizons: Horizons for lagged cumulative-return features.
+        vol_horizons: Horizons for lagged volatility features.
+        lag_zscore_horizons: Horizons for lagged z-score features.
+        lag_market_return_horizons: Horizons for lagged market-return features.
+
+    Returns:
+        Feature DataFrame built from real market data.
     """
     if sp_returns.ndim != 2:
         raise ValueError("path_returns must be 2‑D (n_days, n_instr)")
@@ -242,12 +252,18 @@ def make_real_dataframe(
 
     return df[cols]
 
-
 def trading_strat(pred, real, day_start, normalise=True, periods_per_year=252):
-    """
-    pred: predicted probabilities of shape (N_pred, 1)
-    real: real returns of shape (N_pred, 1)
-    day_start: list of the index of the beginning of each day. Example : [0, 5, 16] if there are 3 days, that start at index 0, 5, 16.
+    """Compute classification and trading metrics from predictions and realized returns.
+
+    Args:
+        pred: Predicted probabilities/scores.
+        real: Realized returns.
+        day_start: Start index used for evaluation.
+        normalise: If True, annualize performance metrics.
+        periods_per_year: Periods per year for annualization.
+
+    Returns:
+        Tuple of evaluation metrics (accuracy, log-loss, AUC, PnL stats).
     """
     pred = np.asarray(pred).ravel()
     real = np.asarray(real).ravel()

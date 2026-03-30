@@ -1,8 +1,13 @@
 import copy
 
-
 class EarlyStopping:
     def __init__(self, patience=5, delta=0.0):
+        """Initialize early-stopping hyperparameters and tracking state.
+
+        Args:
+            patience: Maximum epochs without validation improvement.
+            delta: Minimum validation improvement to reset patience.
+        """
         self.patience = patience
         self.delta = delta
         self.best_score = None
@@ -13,6 +18,12 @@ class EarlyStopping:
         self.current_epoch = 0
 
     def __call__(self, val_loss, model):
+        """Update early-stopping state from the current validation loss.
+
+        Args:
+            val_loss: Current validation loss.
+            model: SBBTS drift model.
+        """
         self.current_epoch += 1
         score = val_loss
         if self.best_score is None:
@@ -31,4 +42,9 @@ class EarlyStopping:
             self.counter = 0
 
     def load_best_model(self, model):
+        """Load the best checkpointed model weights into the provided model.
+
+        Args:
+            model: SBBTS drift model.
+        """
         model.load_state_dict(self.best_model_state)

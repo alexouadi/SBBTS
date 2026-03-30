@@ -6,8 +6,23 @@ import torch
 
 from training.training_sbbts_dsbm import clean_memory
 
-
 def generate_dsbm_batch(N, X, model, y_0, N_pi, T, beta, M_simu, safe_t=1e-2, ):
+    """Simulate one batch of SBBTS trajectories by Euler discretization of the auxiliary process and inverse transport map.
+
+    Args:
+        N: Number of time points.
+        X: Input time-series tensor or matrix.
+        model: SBBTS drift model.
+        y_0: Current/past state used as initial condition.
+        N_pi: Number of Euler steps per interval.
+        T: Final time horizon.
+        beta: SBBTS regularization parameter beta.
+        M_simu: Number of simulated trajectories.
+        safe_t: Small epsilon to avoid evaluating exactly at t=T.
+
+    Returns:
+        Tensor of generated trajectories with shape (M_simu, N, d).
+    """
     device = X.device
     d = X.shape[-1]
 
@@ -50,8 +65,26 @@ def generate_dsbm_batch(N, X, model, y_0, N_pi, T, beta, M_simu, safe_t=1e-2, ):
 
     return sbbts_sample[:, 1:]
 
-
 def generate_dsbm(N, X, model, y_0, N_pi, T, beta, M_simu, N_batch, scale=1., safe_t=1e-2, exp=False):
+    """Generate SBBTS samples by repeatedly calling batch generation and concatenating outputs.
+
+    Args:
+        N: Number of time points.
+        X: Input time-series tensor or matrix.
+        model: SBBTS drift model.
+        y_0: Current/past state used as initial condition.
+        N_pi: Number of Euler steps per interval.
+        T: Final time horizon.
+        beta: SBBTS regularization parameter beta.
+        M_simu: Number of simulated trajectories.
+        N_batch: Number of generation batches.
+        scale: Scale factor applied to generated returns.
+        safe_t: Small epsilon to avoid evaluating exactly at t=T.
+        exp: If True, exponentiate cumulative returns to price levels.
+
+    Returns:
+        NumPy array of generated samples aggregated over all batches.
+    """
     base = M_simu // N_batch
     extra = M_simu % N_batch
     samples = []
