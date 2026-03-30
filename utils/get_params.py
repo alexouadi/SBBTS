@@ -7,11 +7,17 @@ from scipy.optimize import minimize
 
 @nb.jit(nopython=True, cache=True)
 def MLE_OU_robust(params, X, dt):
-    """
-    Return negative log likelihood on Ornstein-Uhlenbeck data
-    :params params: initial parameters; [list]
-    :params X: data; [np.array]
-    :params dt: time step; [float]
+    """MLE OU robust.
+
+    MLE OU robust. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        params: Input parameter `params` used by this computation.
+        X: Input time-series samples.
+        dt: Time discretization step.
+
+    Returns:
+        Computed output(s) produced by the function.
     """
     theta, mu, sigma = params
     N = len(X)
@@ -30,12 +36,18 @@ def MLE_OU_robust(params, X, dt):
 
 
 def plot_params_distrib_OU(X_data, X_sbts, dt=1 / 252, fix=False):
-    """
-    Plot the distribution of the estimated parameters for real and synthetic data
-    :params X_data: real OU data; [np.array]
-    :params X_sbts: synthetic data; [np.array]
-    :params dt: time step; [float]
-    :params fix: True if the real parameters are the same for all samples else False; [bool]
+    """Plot params distrib OU.
+
+    Plot params distrib OU. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        X_data: Input parameter `X_data` used by this computation.
+        X_sbts: Input parameter `X_sbts` used by this computation.
+        dt: Time discretization step.
+        fix: Input parameter `fix` used by this computation.
+
+    Returns:
+        None.
     """
     params_data = np.zeros((len(X_data), 3))
     for m in range(len(X_data)):
@@ -109,11 +121,17 @@ def plot_params_distrib_OU(X_data, X_sbts, dt=1 / 252, fix=False):
 
 @nb.jit(nopython=True, cache=True)
 def MLE_Heston_robust(params, X, dt):
-    """
-    Return negative log likelihood on Heston data
-    :params params: initial parameters; [list]
-    :params X: data; [np.array]
-    :params dt: time step; [float]
+    """MLE Heston robust.
+
+    MLE Heston robust. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        params: Input parameter `params` used by this computation.
+        X: Input time-series samples.
+        dt: Time discretization step.
+
+    Returns:
+        Computed output(s) produced by the function.
     """
     kappa, theta, xi, rho, r = params
     N = len(X)
@@ -154,10 +172,16 @@ def MLE_Heston_robust(params, X, dt):
 
 
 def get_params_estimation(X, dt=1 / 252):
-    """
-    Return the estimated parameters for each samples
-    :params X: data; [np.array]
-    :params dt: time step; [float]
+    """Get params estimation.
+
+    Get params estimation. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        X: Input time-series samples.
+        dt: Time discretization step.
+
+    Returns:
+        Computed output(s) produced by the function.
     """
     params_data = np.zeros((len(X), 5))
 
@@ -183,16 +207,21 @@ def get_params_estimation(X, dt=1 / 252):
 
 
 def plot_params_distrib_Heston(params_data, params_sbts, params_sbbts=None, q1=5, q2=95, fix=False, robust=False):
-    """
-    Plot the distribution of the estimated parameters for real and synthetic data
-    :params params_data: estimated parameters for each samples on real data; [np.array]
-    :params params_sbts: estimated parameters for each samples on SBTS data; [np.array]
-    :params params_sbbts: estimated parameters for each samples on SBBTS data; [np.array]
-    :params q1, q2: quantiles for the range of estimated parameters to plot; [float]
-    :params dt: time step; [float]
-    :params fix: True to plot real fixed parameters distribution; [bool]
-    :params robust: True to plot real random parameters distribution; [bool]
-    return: None
+    """Plot params distrib Heston.
+
+    Plot params distrib Heston. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        params_data: Input parameter `params_data` used by this computation.
+        params_sbts: Input parameter `params_sbts` used by this computation.
+        params_sbbts: Input parameter `params_sbbts` used by this computation.
+        q1: Input parameter `q1` used by this computation.
+        q2: Input parameter `q2` used by this computation.
+        fix: Input parameter `fix` used by this computation.
+        robust: Input parameter `robust` used by this computation.
+
+    Returns:
+        None.
     """
     kappa = np.random.uniform(0.5, 4., 100000)
     theta = np.random.uniform(0.5, 1.5, 100000)

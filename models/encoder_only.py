@@ -7,6 +7,17 @@ from torch import nn
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model: int, max_len: int = 5000):
 
+        """Initialize the module/class state.
+
+        Configure internal attributes used by the SBBTS model and utilities.
+
+        Args:
+            d_model: Internal embedding dimension used by the networks.
+            max_len: Input parameter `max_len` used by this computation.
+
+        Returns:
+            None.
+        """
         super(PositionalEncoding, self).__init__()
         pe = torch.zeros(max_len, d_model).float()
         pe.require_grad = False
@@ -23,11 +34,36 @@ class PositionalEncoding(nn.Module):
         self.register_buffer('pe', pe)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward.
+
+        Forward. This routine is part of the SBBTS workflow and related utilities.
+
+        Args:
+            x: Input parameter `x` used by this computation.
+
+        Returns:
+            Computed output(s) produced by the function.
+        """
         return self.pe[:x.size(1)]
 
 
 class EncoderOnly(torch.nn.Module):
     def __init__(self, input_dim, d_model, nhead, n_layers, N, device):
+        """Initialize the module/class state.
+
+        Configure internal attributes used by the SBBTS model and utilities.
+
+        Args:
+            input_dim: Dimensionality of the raw input space.
+            d_model: Internal embedding dimension used by the networks.
+            nhead: Number of attention heads in the Transformer encoder.
+            n_layers: Number of Transformer encoder layers.
+            N: Number of time points (or sequence length minus one, depending on context).
+            device: Torch device used for allocations and cleanup.
+
+        Returns:
+            None.
+        """
         super().__init__()
 
         self.mask = nn.Transformer(batch_first=True).generate_square_subsequent_mask(N).to(device)
@@ -38,6 +74,17 @@ class EncoderOnly(torch.nn.Module):
         self.past_encoder = nn.TransformerEncoder(encoder_layer, num_layers=n_layers)  # , norm=norm)
 
     def forward(self, y_past, training=False):
+        """Forward.
+
+        Forward. This routine is part of the SBBTS workflow and related utilities.
+
+        Args:
+            y_past: Past trajectory used as temporal context.
+            training: Input parameter `training` used by this computation.
+
+        Returns:
+            Computed output(s) produced by the function.
+        """
         y_proj = self.input_proj(y_past)  # (B, L, d_model)
         y_emb = y_proj + self.pe(y_proj)  # (B, L, d_model)
 

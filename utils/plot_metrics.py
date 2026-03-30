@@ -4,6 +4,18 @@ import seaborn as sns
 
 
 def my_acf(my_arr, lag_len, lev=False):
+    """My acf.
+
+    My acf. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        my_arr: One-dimensional time series.
+        lag_len: Maximum lag used for autocorrelation computation.
+        lev: If True, compute correlation between squared and raw returns.
+
+    Returns:
+        Computed output(s) produced by the function.
+    """
     x = my_arr
     x = x - x.mean()
     acorr = np.empty(lag_len + 1)
@@ -23,6 +35,20 @@ def my_acf(my_arr, lag_len, lev=False):
 
 
 def plot_acf(x_data, x_sbbts, path=None, figsize=(8, 2), legend='SBBTS'):
+    """Plot acf.
+
+    Plot acf. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        x_data: Collection of real data trajectories.
+        x_sbbts: Collection of synthetic SBBTS trajectories.
+        path: Filesystem path to the dataset/file.
+        figsize: Matplotlib figure size.
+        legend: Legend label used for synthetic series.
+
+    Returns:
+        None.
+    """
     fig, ax = plt.subplots(1, 2, figsize=figsize)
 
     lag = 60
@@ -66,6 +92,20 @@ def plot_acf(x_data, x_sbbts, path=None, figsize=(8, 2), legend='SBBTS'):
 
 
 def plot_return_dist(x_data, x_sbbts, bins=100, figsize=(8, 2), path=None):
+    """Plot return dist.
+
+    Plot return dist. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        x_data: Collection of real data trajectories.
+        x_sbbts: Collection of synthetic SBBTS trajectories.
+        bins: Number of bins used in histogram plots.
+        figsize: Matplotlib figure size.
+        path: Filesystem path to the dataset/file.
+
+    Returns:
+        None.
+    """
     if len(x_data) != len(x_sbbts):
         raise ValueError('diff_real and diff_fake must have the same length')
 
@@ -102,10 +142,34 @@ def plot_return_dist(x_data, x_sbbts, bins=100, figsize=(8, 2), path=None):
 
 
 def plot_corr_matrix(x_data, x_sbbts, annot=False, figsize=(11, 4), path=None):
+    """Plot corr matrix.
+
+    Plot corr matrix. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        x_data: Collection of real data trajectories.
+        x_sbbts: Collection of synthetic SBBTS trajectories.
+        annot: Whether to display correlation values inside heatmap cells.
+        figsize: Matplotlib figure size.
+        path: Filesystem path to the dataset/file.
+
+    Returns:
+        Computed output(s) produced by the function.
+    """
     data_set1 = x_data
     data_set2 = x_sbbts
 
     def calculate_correlation_matrix(data):
+        """Calculate correlation matrix.
+
+        Calculate correlation matrix. This routine is part of the SBBTS workflow and related utilities.
+
+        Args:
+            data: Input parameter `data` used by this computation.
+
+        Returns:
+            Computed output(s) produced by the function.
+        """
         return np.corrcoef(data, rowvar=False)
 
     correlation_matrices_set1 = np.array(

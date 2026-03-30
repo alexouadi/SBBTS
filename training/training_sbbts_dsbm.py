@@ -9,6 +9,22 @@ from early_stopping import EarlyStopping
 
 
 def get_loss(model, y_0, y_T, T, eps=None, t=None, safe_t=1e-2):
+    """Get loss.
+
+    Get loss. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        model: Neural network model used to estimate the SBBTS drift.
+        y_0: Initial trajectory values or past observations.
+        y_T: Target values at the next time step / horizon T.
+        T: Final time horizon.
+        eps: Optional Gaussian noise used to sample Brownian-bridge states.
+        t: Continuous time variable.
+        safe_t: Small epsilon to avoid numerical issues near t=T.
+
+    Returns:
+        Computed output(s) produced by the function.
+    """
     B, L, d = y_T.shape
     h_n = model.tf_encoder(y_0, training=True)
     if eps is None:
@@ -27,6 +43,26 @@ def get_loss(model, y_0, y_T, T, eps=None, t=None, safe_t=1e-2):
 
 def training_sbbts_dsbm(X, model, T, beta, K, n_epochs=100, batch_size=32, patience=10, delta=1e-3, safe_t=1e-2,
                         lr=1e-3):
+    """Training sbbts dsbm.
+
+    Training sbbts dsbm. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        X: Input time-series samples.
+        model: Neural network model used to estimate the SBBTS drift.
+        T: Final time horizon.
+        beta: Regularization/transport parameter beta from the SBBTS objective.
+        K: Number of outer transport-map update iterations.
+        n_epochs: Maximum number of epochs per outer iteration.
+        batch_size: Mini-batch size for optimization.
+        patience: Early-stopping patience in epochs.
+        delta: Minimum improvement threshold used by early stopping.
+        safe_t: Small epsilon to avoid numerical issues near t=T.
+        lr: Learning rate for the optimizer.
+
+    Returns:
+        Computed output(s) produced by the function.
+    """
     device = X.device
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
@@ -120,6 +156,16 @@ def training_sbbts_dsbm(X, model, T, beta, K, n_epochs=100, batch_size=32, patie
 
 
 def clean_memory(device):
+    """Clean memory.
+
+    Clean memory. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        device: Torch device used for allocations and cleanup.
+
+    Returns:
+        None.
+    """
     gc.collect()
     if device != torch.device('cpu'):
         torch.cuda.set_device(device)

@@ -3,22 +3,31 @@ import pandas as pd
 
 
 def load_synth_data(path: str = 'data/return_synth.npy'):
+    """Load synth data.
+
+    Load synth data. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        path: Filesystem path to the dataset/file.
+
+    Returns:
+        Computed output(s) produced by the function.
+    """
     return np.load(path)
 
 
 def _roll(series: pd.Series, window: int, func: str) -> pd.Series:
-    """
-    Rolling aggregation on a series shifted by one day (no leakage).
+    """ roll.
 
-    Parameters
-    ----------
-    series : pd.Series
-    window : int
-    func   : {'sum', 'std', 'mean'}
+     roll. This routine is part of the SBBTS workflow and related utilities.
 
-    Returns
-    -------
-    pd.Series
+    Args:
+        series: Input parameter `series` used by this computation.
+        window: Rolling window length for feature extraction.
+        func: Input parameter `func` used by this computation.
+
+    Returns:
+        Computed output(s) produced by the function.
     """
     shifted = series.shift(1)  # dont tke the return of the day no leakage
 
@@ -32,13 +41,33 @@ def _roll(series: pd.Series, window: int, func: str) -> pd.Series:
 
 
 def binarize_target(df: pd.DataFrame, target_col: str) -> None:
-    """Convert the target_col columns to a binary
-    classification target (sign>0 → 1, else 0). The DataFrame is modified in‑place."""
+    """Binarize target.
+
+    Binarize target. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        df: Input parameter `df` used by this computation.
+        target_col: Input parameter `target_col` used by this computation.
+
+    Returns:
+        None.
+    """
     series = df[target_col]
     df[target_col] = (series > 0).astype(int)
 
 
 def load_real_data(date_col: str, path: str = 'data/training_data.csv', ):
+    """Load real data.
+
+    Load real data. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        date_col: Name of the date column in the raw CSV file.
+        path: Filesystem path to the dataset/file.
+
+    Returns:
+        Computed output(s) produced by the function.
+    """
     sp = pd.read_csv(path).sort_values(by=date_col)
     returns_matrix = sp.copy()[
         [f for f in sp.columns if f != date_col]].to_numpy()  # exclude the date columns and retain only the returns
@@ -62,20 +91,20 @@ def make_path_dataframe(
         lag_zscore_horizons: tuple = (3, 5, 10, 21),
         lag_market_return_horizons: tuple = (1,),
 ) -> pd.DataFrame:
-    """
-    Convert one simulation path into a causal feature DataFrame.
+    """Make path dataframe.
 
-    Returns a DataFrame sorted by (perimeter.Date, perimeter.instr_id) with
-    columns:
-    - perimeter.path_id
-    - perimeter.Date
-    - perimeter.instr_id
-    - target.target
-    - extra.Return
-    - feature.return_t-{h}_market
-    - feature.ret_{h}d
-    - feature.vol_{h}d
-    - feature.ret_zscore_{h}d
+    Make path dataframe. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        path_returns: Input parameter `path_returns` used by this computation.
+        path_id: Input parameter `path_id` used by this computation.
+        cum_horizons: Input parameter `cum_horizons` used by this computation.
+        vol_horizons: Input parameter `vol_horizons` used by this computation.
+        lag_zscore_horizons: Input parameter `lag_zscore_horizons` used by this computation.
+        lag_market_return_horizons: Input parameter `lag_market_return_horizons` used by this computation.
+
+    Returns:
+        Computed output(s) produced by the function.
     """
     if path_returns.ndim != 2:
         raise ValueError("path_returns must be 2‑D (n_days, n_instr)")
@@ -154,21 +183,20 @@ def make_real_dataframe(
         lag_zscore_horizons: tuple = (3, 5, 10, 21),
         lag_market_return_horizons: tuple = (1,),
 ) -> pd.DataFrame:
-    """
-    Inputs :
-    sp_returns : Long Format DataFrame of returns
-    returns_matrix : numpy matrix of returns in long format
-    
-    Returns a DataFrame sorted by (perimeter.Date, perimeter.instr_id) with
-    columns:
-    - perimeter.path_id
-    - perimeter.Date
-    - perimeter.instr_id
-    - target.target
-    - feature.return_t-{h}_market
-    - feature_ret_{h}d
-    - feature.vol_{h}d
-    - feature.ret_zscore_{h}d
+    """Make real dataframe.
+
+    Make real dataframe. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        sp_returns: Input parameter `sp_returns` used by this computation.
+        returns_matrix: Input parameter `returns_matrix` used by this computation.
+        cum_horizons: Input parameter `cum_horizons` used by this computation.
+        vol_horizons: Input parameter `vol_horizons` used by this computation.
+        lag_zscore_horizons: Input parameter `lag_zscore_horizons` used by this computation.
+        lag_market_return_horizons: Input parameter `lag_market_return_horizons` used by this computation.
+
+    Returns:
+        Computed output(s) produced by the function.
     """
     if sp_returns.ndim != 2:
         raise ValueError("path_returns must be 2‑D (n_days, n_instr)")
@@ -244,10 +272,19 @@ def make_real_dataframe(
 
 
 def trading_strat(pred, real, day_start, normalise=True, periods_per_year=252):
-    """
-    pred: predicted probabilities of shape (N_pred, 1)
-    real: real returns of shape (N_pred, 1)
-    day_start: list of the index of the beginning of each day. Example : [0, 5, 16] if there are 3 days, that start at index 0, 5, 16.
+    """Trading strat.
+
+    Trading strat. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        pred: Input parameter `pred` used by this computation.
+        real: Input parameter `real` used by this computation.
+        day_start: Input parameter `day_start` used by this computation.
+        normalise: Input parameter `normalise` used by this computation.
+        periods_per_year: Input parameter `periods_per_year` used by this computation.
+
+    Returns:
+        Computed output(s) produced by the function.
     """
     pred = np.asarray(pred).ravel()
     real = np.asarray(real).ravel()

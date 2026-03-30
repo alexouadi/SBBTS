@@ -8,10 +8,32 @@ from tqdm import tqdm
 
 
 def marchenko_pastur_lambda_plus(n, d, sigma2=1.0):
+    """Marchenko pastur lambda plus.
+
+    Marchenko pastur lambda plus. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        n: Number of observations.
+        d: Feature dimension.
+        sigma2: Variance parameter used in Marchenko-Pastur threshold.
+
+    Returns:
+        Computed output(s) produced by the function.
+    """
     return sigma2 * (1.0 + np.sqrt(d / n)) ** 2
 
 
 def get_decomposition(X):
+    """Get decomposition.
+
+    Get decomposition. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        X: Input time-series samples.
+
+    Returns:
+        Computed output(s) produced by the function.
+    """
     n, d = X.shape
     mu_hat = X.mean(axis=0)
     sigma_hat = X.std(axis=0, ddof=1)
@@ -40,6 +62,19 @@ def get_decomposition(X):
 
 
 def get_cluster(F_scaled, eigvals_m, window, nc=3):
+    """Get cluster.
+
+    Get cluster. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        F_scaled: Scaled factor matrix obtained from PCA decomposition.
+        eigvals_m: Leading eigenvalues associated with retained factors.
+        window: Rolling window length for feature extraction.
+        nc: Number of clusters.
+
+    Returns:
+        Computed output(s) produced by the function.
+    """
     n, m = F_scaled.shape
     feats = []
 
@@ -78,6 +113,21 @@ def get_cluster(F_scaled, eigvals_m, window, nc=3):
 
 
 def get_F_synth(clusters_synth, labels, eigvals_m, window, m, M_f):
+    """Get F synth.
+
+    Get F synth. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        clusters_synth: Synthetic cluster centroids for factor generation.
+        labels: Cluster labels assigned to each original sample.
+        eigvals_m: Leading eigenvalues associated with retained factors.
+        window: Rolling window length for feature extraction.
+        m: Number of retained latent factors.
+        M_f: Number of synthetic factor samples to generate.
+
+    Returns:
+        Computed output(s) produced by the function.
+    """
     F_synth = np.zeros((M_f, window, m))
     cluster_index = np.zeros(len(clusters_synth), dtype=int)
     for k, ind in enumerate(labels):
@@ -90,6 +140,20 @@ def get_F_synth(clusters_synth, labels, eigvals_m, window, m, M_f):
 
 
 def fit_Z_gmm(Z, n_components=2, random_state=None, max_iter=200, tol=1e-4):
+    """Fit Z gmm.
+
+    Fit Z gmm. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        Z: Residual/idiosyncratic component matrix.
+        n_components: Number of Gaussian components in the GMM.
+        random_state: Random seed for reproducibility.
+        max_iter: Maximum EM iterations for GMM fitting.
+        tol: Convergence tolerance for GMM fitting.
+
+    Returns:
+        Computed output(s) produced by the function.
+    """
     n_assets = Z.shape[1]
     fitted = []
 
@@ -119,6 +183,18 @@ def fit_Z_gmm(Z, n_components=2, random_state=None, max_iter=200, tol=1e-4):
 
 
 def get_Z_synth_gmm(Z_fitted, F_synth, d):
+    """Get Z synth gmm.
+
+    Get Z synth gmm. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        Z_fitted: Dictionary containing fitted GMM objects for residuals.
+        F_synth: Synthetic factor matrix.
+        d: Feature dimension.
+
+    Returns:
+        Computed output(s) produced by the function.
+    """
     n_paths, n_steps = F_synth.shape[:2]
     Z_synth = np.zeros((n_paths, n_steps, d))
 
@@ -143,6 +219,20 @@ def get_Z_synth_gmm(Z_fitted, F_synth, d):
 
 
 def reconstruct_X(F_synth, Z_synth, P_m, mu_hat, sigma_hat):
+    """Reconstruct X.
+
+    Reconstruct X. This routine is part of the SBBTS workflow and related utilities.
+
+    Args:
+        F_synth: Synthetic factor matrix.
+        Z_synth: Synthetic residual matrix.
+        P_m: Projection matrix of retained principal components.
+        mu_hat: Estimated mean vector from the original data.
+        sigma_hat: Estimated standard deviation vector from the original data.
+
+    Returns:
+        Computed output(s) produced by the function.
+    """
     X_synth = F_synth @ P_m.T + Z_synth
     X_synth = X_synth * sigma_hat + mu_hat
     return X_synth

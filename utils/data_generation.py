@@ -3,11 +3,15 @@ import numpy as np
 
 class DataGenerator:
     def __init__(self, M: int) -> None:
-        """
-        Parameters
-        ----------
-        M : int
-            Number of time series to generate.
+        """Initialize the module/class state.
+
+        Configure internal attributes used by the SBBTS model and utilities.
+
+        Args:
+            M: Input parameter `M` used by this computation.
+
+        Returns:
+            None.
         """
         self.M = M
 
@@ -23,31 +27,37 @@ class DataGenerator:
             S0: float = 1.0,
             v0: float = 1.0,
     ) -> np.ndarray:
-        """
-        Return Heston data following the scheme defined in arxiv.org/pdf/2412.11264.
+        """Generate heston.
 
-        Parameters
-        ----------
-        r_range, kappa_range, theta_range, rho_range, xi_range : list of two floats
-            Parameter bounds.
-        N : int
-            Length of each series.
-        dt : float, optional
-            Time step.
-        S0 : float, optional
-            Initial asset price.
-        v0 : float, optional
-            Initial variance.
+        Generate heston. This routine is part of the SBBTS workflow and related utilities.
 
-        Returns
-        -------
-        np.ndarray
-            Array of shape (M, N+1, 2) where the last dimension contains
-            ``price`` and ``variance``.
+        Args:
+            r_range: Sampling range for drift parameter r.
+            kappa_range: Sampling range for mean-reversion speed kappa.
+            theta_range: Sampling range for long-run variance theta.
+            rho_range: Sampling range for correlation rho.
+            xi_range: Sampling range for volatility-of-volatility xi.
+            N: Number of time points (or sequence length minus one, depending on context).
+            dt: Time discretization step.
+            S0: Initial asset price.
+            v0: Initial variance level.
+
+        Returns:
+            Computed output(s) produced by the function.
         """
 
         def simulate_ig(mu: float, lam: float) -> float:
-            """Inverse Gaussian sampler (Michael?Schucany?Haas method)."""
+            """Simulate ig.
+
+            Simulate ig. This routine is part of the SBBTS workflow and related utilities.
+
+            Args:
+                mu: Input parameter `mu` used by this computation.
+                lam: Input parameter `lam` used by this computation.
+
+            Returns:
+                Computed output(s) produced by the function.
+            """
             G = np.random.randn()
             Y = G ** 2
             X = mu + (0.5 / lam) * (mu ** 2 * Y - mu * np.sqrt(4 * mu * lam * Y + (mu * Y) ** 2))
@@ -55,6 +65,18 @@ class DataGenerator:
             return X if U <= mu / (mu + X) else mu ** 2 / X
 
         def simulate_vol(kappa: float, theta: float, xi: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+            """Simulate vol.
+
+            Simulate vol. This routine is part of the SBBTS workflow and related utilities.
+
+            Args:
+                kappa: Mean-reversion speed.
+                theta: Long-run variance level.
+                xi: Volatility-of-volatility parameter.
+
+            Returns:
+                Computed output(s) produced by the function.
+            """
             V = np.zeros(N + 1)
             U = np.zeros(N)
             Z = np.zeros(N)
@@ -69,6 +91,20 @@ class DataGenerator:
             return V, U, Z
 
         def simulate_h(r: float, kappa: float, theta: float, rho: float, xi: float) -> tuple[np.ndarray, np.ndarray]:
+            """Simulate h.
+
+            Simulate h. This routine is part of the SBBTS workflow and related utilities.
+
+            Args:
+                r: Drift coefficient.
+                kappa: Mean-reversion speed.
+                theta: Long-run variance level.
+                rho: Correlation between price and variance shocks.
+                xi: Volatility-of-volatility parameter.
+
+            Returns:
+                Computed output(s) produced by the function.
+            """
             V, U, Z = simulate_vol(kappa, theta, xi)
             log_S = np.zeros(N + 1)
             log_S[0] = np.log(S0)
