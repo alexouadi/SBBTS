@@ -7,28 +7,26 @@ from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 
 def marchenko_pastur_lambda_plus(n, d, sigma2=1.0):
-    """Compute the Marchenko-Pastur upper edge used for factor selection.
+    """Compute the Marchenko-Pastur upper eigenvalue threshold used to retain PCA factors.
 
     Args:
-        n: Number of time observations in the return matrix.
+        n: Number of observations.
         d: Number of assets/features.
-        sigma2: Reference noise variance in the random-matrix model.
+        sigma2: Noise variance used in MP threshold.
 
     Returns:
-        Scalar threshold λ+ above which eigenvalues are treated as signal.
+        Scalar λ+ threshold.
     """
     return sigma2 * (1.0 + np.sqrt(d / n)) ** 2
 
 def get_decomposition(X):
-    """Decompose returns into factor and residual components.
+    """Decompose standardized returns into common factors and idiosyncratic residuals.
 
     Args:
-        X: Return matrix of shape (n_samples, n_assets).
+        X: Input time-series tensor or matrix.
 
     Returns:
-        Tuple containing:
-        (F, F_scaled, P_m, Z, mu_hat, sigma_hat, eigvals_m, eigvals), where
-        F are retained factors, Z are residuals, and P_m is the PCA loading matrix.
+        Tuple `(F, F_scaled, P_m, Z, mu_hat, sigma_hat, eigvals_m, eigvals)`.
     """
     n, d = X.shape
     mu_hat = X.mean(axis=0)
@@ -57,17 +55,16 @@ def get_decomposition(X):
     return F, F_scaled, P_m, Z, mu_hat, sigma_hat, eigvals_m, eigvals
 
 def get_cluster(F_scaled, eigvals_m, window, nc=3):
-    """Cluster extracted factors using distributional and spectral features.
+    """Cluster retained PCA factors using moments and eigenvalue-based features.
 
     Args:
-        F_scaled: Normalized factor matrix of shape (n_samples, n_factors).
-        eigvals_m: Eigenvalues corresponding to retained factors.
-        window: Window length used to build sub-series for each factor.
-        nc: Number of factor clusters (typically 3 in experiments).
+        F_scaled: Scaled PCA factor matrix.
+        eigvals_m: Retained eigenvalues.
+        window: Sliding window length.
+        nc: Number of clusters.
 
     Returns:
-        (cluster_sets, labels) where cluster_sets maps cluster id to stacked
-        windows and labels gives the cluster assignment of each factor.
+        Tuple `(cluster_sets, labels)` for factor clusters.
     """
     n, m = F_scaled.shape
     feats = []
@@ -106,18 +103,18 @@ def get_cluster(F_scaled, eigvals_m, window, nc=3):
     return cluster_sets, labels
 
 def get_F_synth(clusters_synth, labels, eigvals_m, window, m, M_f):
-    """Reassemble synthetic latent factors from cluster-wise generations.
+    """Reconstruct synthetic factor tensor from cluster-wise generated windows.
 
     Args:
-        clusters_synth: Synthetic windows generated independently per cluster.
-        labels: Cluster label of each retained factor dimension.
-        eigvals_m: Retained eigenvalues used to rescale factors to original variance.
-        window: Temporal length of each generated factor trajectory.
+        clusters_synth: Generated windows per cluster.
+        labels: Cluster assignment per factor.
+        eigvals_m: Retained eigenvalues.
+        window: Sliding window length.
         m: Number of retained factors.
-        M_f: Number of synthetic trajectories to generate.
+        M_f: Number of synthetic factor paths.
 
     Returns:
-        Synthetic factor tensor of shape (M_f, window, m), rescaled by eigvals_m.
+        Synthetic factor tensor of shape (M_f, window, m).
     """
     F_synth = np.zeros((M_f, window, m))
     cluster_index = np.zeros(len(clusters_synth), dtype=int)
@@ -130,17 +127,17 @@ def get_F_synth(clusters_synth, labels, eigvals_m, window, m, M_f):
     return F_synth * rescale
 
 def fit_Z_gmm(Z, n_components=2, random_state=None, max_iter=200, tol=1e-4):
-    """Fit one Gaussian Mixture Model per residual dimension.
+    """Fit a univariate Gaussian Mixture Model to each residual dimension.
 
     Args:
-        Z: Residual matrix of shape (n_samples, n_assets).
-        n_components: Number of Gaussian components in each univariate mixture.
-        random_state: Optional random seed for EM initialization.
-        max_iter: Maximum number of EM iterations.
-        tol: Convergence tolerance for EM stopping.
+        Z: Residual matrix.
+        n_components: Number of mixture components.
+        random_state: Random seed.
+        max_iter: Maximum EM iterations.
+        tol: EM convergence tolerance.
 
     Returns:
-        List of fitted per-asset mixture parameters (weights, means, variances).
+        List of fitted mixture parameters for each residual dimension.
     """
     n_assets = Z.shape[1]
     fitted = []
@@ -170,15 +167,15 @@ def fit_Z_gmm(Z, n_components=2, random_state=None, max_iter=200, tol=1e-4):
     return fitted
 
 def get_Z_synth_gmm(Z_fitted, F_synth, d):
-    """Sample synthetic residual series from fitted per-asset GMMs.
+    """Sample synthetic idiosyncratic residuals from the fitted per-asset GMMs.
 
     Args:
-        Z_fitted: List of fitted GMM parameter dictionaries from `fit_Z_gmm`.
-        F_synth: Synthetic factor tensor used to infer output path/time shape.
-        d: Number of assets/residual dimensions to sample.
+        Z_fitted: Fitted GMM parameters per residual dimension.
+        F_synth: Synthetic factor tensor.
+        d: Number of assets/features.
 
     Returns:
-        Residual tensor of shape (n_paths, n_steps, d).
+        Synthetic residual tensor of shape (n_paths, n_steps, d).
     """
     n_paths, n_steps = F_synth.shape[:2]
     Z_synth = np.zeros((n_paths, n_steps, d))
@@ -203,17 +200,17 @@ def get_Z_synth_gmm(Z_fitted, F_synth, d):
     return Z_synth
 
 def reconstruct_X(F_synth, Z_synth, P_m, mu_hat, sigma_hat):
-    """Reconstruct synthetic returns from factors and residual components.
+    """Recompose synthetic returns from synthetic factors and residuals, then unscale.
 
     Args:
-        F_synth: Synthetic factor tensor of shape (n_paths, n_steps, m).
-        Z_synth: Synthetic residual tensor of shape (n_paths, n_steps, d).
-        P_m: PCA loading matrix of shape (d, m).
-        mu_hat: Per-asset empirical mean used during standardization.
-        sigma_hat: Per-asset empirical standard deviation used during standardization.
+        F_synth: Synthetic factor tensor.
+        Z_synth: Synthetic residual tensor.
+        P_m: PCA loading matrix.
+        mu_hat: Empirical mean used for scaling.
+        sigma_hat: Empirical std used for scaling.
 
     Returns:
-        Synthetic return tensor in the original scale, shape (n_paths, n_steps, d).
+        Synthetic return tensor in original data scale.
     """
     X_synth = F_synth @ P_m.T + Z_synth
     X_synth = X_synth * sigma_hat + mu_hat

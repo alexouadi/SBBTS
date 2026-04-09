@@ -2,16 +2,11 @@ import copy
 
 class EarlyStopping:
     def __init__(self, patience=5, delta=0.0):
-        """Initialize the module/class state.
-
-        Configure internal attributes used by the SBBTS model and utilities.
+        """Initialize early-stopping hyperparameters and tracking state.
 
         Args:
-            patience: Early-stopping patience in epochs.
-            delta: Minimum improvement threshold used by early stopping.
-
-        Returns:
-            None.
+            patience: Maximum epochs without validation improvement.
+            delta: Minimum validation improvement to reset patience.
         """
         self.patience = patience
         self.delta = delta
@@ -23,16 +18,11 @@ class EarlyStopping:
         self.current_epoch = 0
 
     def __call__(self, val_loss, model):
-        """Evaluate one early-stopping step.
-
-        Update the best checkpoint and stopping flag using the current validation loss.
+        """Update early-stopping state from the current validation loss.
 
         Args:
-            val_loss: Validation loss at the current epoch.
-            model: Neural network model used to estimate the SBBTS drift.
-
-        Returns:
-            None.
+            val_loss: Current validation loss.
+            model: SBBTS drift model.
         """
         self.current_epoch += 1
         score = val_loss
@@ -52,12 +42,9 @@ class EarlyStopping:
             self.counter = 0
 
     def load_best_model(self, model):
-        """Load best model.
+        """Load the best checkpointed model weights into the provided model.
 
-    Args:
-            model: Neural network model used to estimate the SBBTS drift.
-
-        Returns:
-            None.
+        Args:
+            model: SBBTS drift model.
         """
         model.load_state_dict(self.best_model_state)

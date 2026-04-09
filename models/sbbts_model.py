@@ -7,13 +7,18 @@ from torch import nn
 from encoder_only import EncoderOnly
 
 def get_timestep_embedding(timesteps, embedding_dim=128):
+<<<<<<< HEAD
     """
+=======
+    """Build sinusoidal time embeddings used by the drift network.
+
+>>>>>>> f57dbd1e40ae50f9a610a18df70ef2ba0fb4ae11
     Args:
-        timesteps: Tensor of time indices/timestamps to encode.
-        embedding_dim: Size of the sinusoidal time embedding.
+        timesteps: Tensor of times to embed.
+        embedding_dim: Dimension of the sinusoidal embedding.
 
     Returns:
-        Computed output(s) produced by the function.
+        Time-embedding tensor.
     """
     half_dim = embedding_dim // 2
     emb = math.log(10000) / (half_dim - 1)
@@ -27,14 +32,16 @@ def get_timestep_embedding(timesteps, embedding_dim=128):
 
 class MLP(torch.nn.Module):
     def __init__(self, input_dim, d_model, hidden_dim):
+<<<<<<< HEAD
         """
-        Args:
-            input_dim: Dimensionality of the raw input space.
-            d_model: Internal embedding dimension used by the networks.
-            hidden_dim: Hidden dimension for MLP projection blocks.
+=======
+        """Initialize the MLP blocks used to predict the drift term.
 
-        Returns:
-            None.
+>>>>>>> f57dbd1e40ae50f9a610a18df70ef2ba0fb4ae11
+        Args:
+            input_dim: Input feature dimension.
+            d_model: Transformer/embedding dimension.
+            hidden_dim: Hidden size of the MLP blocks.
         """
         super().__init__()
         self.d_model = d_model
@@ -60,14 +67,23 @@ class MLP(torch.nn.Module):
         )
 
     def forward(self, t, y, h):
+<<<<<<< HEAD
         """
         Args:
             t: Continuous time variable.
             y: Current state values.
             h: Context embedding from the temporal encoder.
+=======
+        """Run a forward pass for the module.
+
+        Args:
+            t: Continuous time tensor.
+            y: Current state tensor.
+            h: Context embedding from the encoder.
+>>>>>>> f57dbd1e40ae50f9a610a18df70ef2ba0fb4ae11
 
         Returns:
-            Computed output(s) produced by the function.
+            Module output tensor.
         """
         t_embed = self.t_encoder(get_timestep_embedding(t, self.d_model))  # (B, L, d_model)
         y_embed = self.y_encoder(y)  # (B, L, d_model)
@@ -76,6 +92,7 @@ class MLP(torch.nn.Module):
 
 class ScoreNN(torch.nn.Module):
     def __init__(self, input_dim, d_model, hidden_dim, nhead, n_layers, L, device):
+<<<<<<< HEAD
         """
         Args:
             input_dim: Dimensionality of the raw input space.
@@ -85,6 +102,18 @@ class ScoreNN(torch.nn.Module):
             n_layers: Number of Transformer encoder layers.
             L: Maximum sequence length used by the encoder mask.
             device: Torch device used for allocations and cleanup.
+=======
+        """Initialize the full score network (encoder + drift head).
+
+        Args:
+            input_dim: Input feature dimension.
+            d_model: Transformer/embedding dimension.
+            hidden_dim: Hidden size of the MLP blocks.
+            nhead: Number of attention heads.
+            n_layers: Number of transformer encoder layers.
+            L: Maximum sequence length.
+            device: Torch device used by the model.
+>>>>>>> f57dbd1e40ae50f9a610a18df70ef2ba0fb4ae11
         """
         super().__init__()
 
@@ -92,11 +121,23 @@ class ScoreNN(torch.nn.Module):
         self.get_drift = MLP(input_dim, d_model, hidden_dim)
 
     def forward(self, t, y, y_past):
+<<<<<<< HEAD
         """
         Args:
             t: Continuous time variable.
             y: Current state values.
             y_past: Past trajectory used as temporal context.
+=======
+        """Run a forward pass for the module.
+
+        Args:
+            t: Continuous time tensor.
+            y: Current state tensor.
+            y_past: Past trajectory/context sequence.
+
+        Returns:
+            Module output tensor.
+>>>>>>> f57dbd1e40ae50f9a610a18df70ef2ba0fb4ae11
         """
         h = self.tf_encoder(y_past)
         return self.get_drift(t, y, h)
@@ -104,11 +145,20 @@ class ScoreNN(torch.nn.Module):
 # for beta small
 class InverseMLP(torch.nn.Module):
     def __init__(self, input_dim, d_model, t_model):
+<<<<<<< HEAD
         """
         Args:
             input_dim: Dimensionality of the raw input space.
             d_model: Internal embedding dimension used by the networks.
             t_model: Drift network that consumes time/state embeddings.
+=======
+        """Initialize the inverse transport MLP used for small-beta correction.
+
+        Args:
+            input_dim: Input feature dimension.
+            d_model: Transformer/embedding dimension.
+            t_model: Pretrained drift model used for inverse transport.
+>>>>>>> f57dbd1e40ae50f9a610a18df70ef2ba0fb4ae11
         """
         super().__init__()
         self.d_model = d_model
@@ -134,10 +184,21 @@ class InverseMLP(torch.nn.Module):
         )
 
     def forward(self, t, y):
+<<<<<<< HEAD
         """
         Args:
             t: Continuous time variable.
             y: Current state values.
+=======
+        """Run a forward pass for the module.
+
+        Args:
+            t: Continuous time tensor.
+            y: Current state tensor.
+
+        Returns:
+            Module output tensor.
+>>>>>>> f57dbd1e40ae50f9a610a18df70ef2ba0fb4ae11
         """
         t_embed = self.t_encoder(t)
         y_embed = self.y_encoder(y)

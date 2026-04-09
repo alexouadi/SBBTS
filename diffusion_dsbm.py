@@ -7,21 +7,21 @@ import torch
 from training.training_sbbts_dsbm import clean_memory
 
 def generate_dsbm_batch(N, X, model, y_0, N_pi, T, beta, M_simu, safe_t=1e-2, ):
-    """Generate dsbm batch.
+    """Simulate one batch of SBBTS trajectories by Euler discretization of the auxiliary process and inverse transport map.
 
     Args:
-        N: Number of time points (or sequence length minus one, depending on context).
-        X: Input time-series samples.
-        model: Neural network model used to estimate the SBBTS drift.
-        y_0: Initial trajectory values or past observations.
-        N_pi: Number of Euler discretization steps used inside one interval.
+        N: Number of time points.
+        X: Input time-series tensor or matrix.
+        model: SBBTS drift model.
+        y_0: Current/past state used as initial condition.
+        N_pi: Number of Euler steps per interval.
         T: Final time horizon.
-        beta: Regularization/transport parameter beta from the SBBTS objective.
+        beta: SBBTS regularization parameter beta.
         M_simu: Number of simulated trajectories.
-        safe_t: Small epsilon to avoid numerical issues near t=T.
+        safe_t: Small epsilon to avoid evaluating exactly at t=T.
 
     Returns:
-        Computed output(s) produced by the function.
+        Tensor of generated trajectories with shape (M_simu, N, d).
     """
     device = X.device
     d = X.shape[-1]
@@ -66,24 +66,24 @@ def generate_dsbm_batch(N, X, model, y_0, N_pi, T, beta, M_simu, safe_t=1e-2, ):
     return sbbts_sample[:, 1:]
 
 def generate_dsbm(N, X, model, y_0, N_pi, T, beta, M_simu, N_batch, scale=1., safe_t=1e-2, exp=False):
-    """Generate dsbm.
+    """Generate SBBTS samples by repeatedly calling batch generation and concatenating outputs.
 
     Args:
-        N: Number of time points (or sequence length minus one, depending on context).
-        X: Input time-series samples.
-        model: Neural network model used to estimate the SBBTS drift.
-        y_0: Initial trajectory values or past observations.
-        N_pi: Number of Euler discretization steps used inside one interval.
+        N: Number of time points.
+        X: Input time-series tensor or matrix.
+        model: SBBTS drift model.
+        y_0: Current/past state used as initial condition.
+        N_pi: Number of Euler steps per interval.
         T: Final time horizon.
-        beta: Regularization/transport parameter beta from the SBBTS objective.
+        beta: SBBTS regularization parameter beta.
         M_simu: Number of simulated trajectories.
-        N_batch: Number of batches used during generation.
-        scale: Multiplicative scaling applied to generated trajectories.
-        safe_t: Small epsilon to avoid numerical issues near t=T.
-        exp: If True, exponentiate generated log-returns to levels.
+        N_batch: Number of generation batches.
+        scale: Scale factor applied to generated returns.
+        safe_t: Small epsilon to avoid evaluating exactly at t=T.
+        exp: If True, exponentiate cumulative returns to price levels.
 
     Returns:
-        Computed output(s) produced by the function.
+        NumPy array of generated samples aggregated over all batches.
     """
     base = M_simu // N_batch
     extra = M_simu % N_batch

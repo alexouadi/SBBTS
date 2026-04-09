@@ -6,15 +6,15 @@ from scipy.optimize import minimize
 
 @nb.jit(nopython=True, cache=True)
 def MLE_OU_robust(params, X, dt):
-    """MLE OU robust.
+    """Compute the negative log-likelihood of an OU process for robust parameter estimation.
 
     Args:
-        params: Parameter vector optimized by maximum-likelihood estimation.
-        X: Input time-series samples.
-        dt: Time discretization step.
+        params: Parameter vector for likelihood evaluation.
+        X: Input time-series tensor or matrix.
+        dt: Time step.
 
     Returns:
-        Computed output(s) produced by the function.
+        Negative log-likelihood value.
     """
     theta, mu, sigma = params
     N = len(X)
@@ -32,13 +32,13 @@ def MLE_OU_robust(params, X, dt):
     return -logL
 
 def plot_params_distrib_OU(X_data, X_sbts, dt=1 / 252, fix=False):
-    """Plot params distrib OU.
+    """Estimate OU parameters path-wise and plot their empirical distributions.
 
     Args:
-        X_data: Collection of real trajectories used for parameter estimation.
-        X_sbts: Collection of SBTS synthetic trajectories used for comparison.
-        dt: Time discretization step.
-        fix: If True, compare against fixed reference parameters instead of sampled priors.
+        X_data: Real trajectories for parameter estimation.
+        X_sbts: SBTS trajectories for comparison.
+        dt: Time step.
+        fix: If True, plot fixed reference instead of random prior.
 
     Returns:
         None.
@@ -114,15 +114,15 @@ def plot_params_distrib_OU(X_data, X_sbts, dt=1 / 252, fix=False):
 
 @nb.jit(nopython=True, cache=True)
 def MLE_Heston_robust(params, X, dt):
-    """MLE Heston robust.
+    """Compute the negative log-likelihood for Heston parameters.
 
     Args:
-        params: Parameter vector optimized by maximum-likelihood estimation.
-        X: Input time-series samples.
-        dt: Time discretization step.
+        params: Parameter vector for likelihood evaluation.
+        X: Input time-series tensor or matrix.
+        dt: Time step.
 
     Returns:
-        Computed output(s) produced by the function.
+        Negative log-likelihood value.
     """
     kappa, theta, xi, rho, r = params
     N = len(X)
@@ -162,14 +162,14 @@ def MLE_Heston_robust(params, X, dt):
 
 
 def get_params_estimation(X, dt=1 / 252):
-    """Get params estimation.
+    """Estimate Heston parameters for each path in a dataset.
 
     Args:
-        X: Input time-series samples.
-        dt: Time discretization step.
+        X: Input time-series tensor or matrix.
+        dt: Time step.
 
     Returns:
-        Computed output(s) produced by the function.
+        Array of estimated parameters per trajectory.
     """
     params_data = np.zeros((len(X), 5))
 
@@ -194,16 +194,16 @@ def get_params_estimation(X, dt=1 / 252):
     return params_data
 
 def plot_params_distrib_Heston(params_data, params_sbts, params_sbbts=None, q1=5, q2=95, fix=False, robust=False):
-    """Plot params distrib Heston.
+    """Plot distributions of estimated Heston parameters across datasets.
 
     Args:
         params_data: Estimated parameters from real data.
-        params_sbts: Estimated parameters from SBTS samples.
-        params_sbbts: Estimated parameters from SBBTS samples (if provided).
-        q1: Lower percentile used to trim outliers.
-        q2: Upper percentile used to trim outliers.
-        fix: If True, compare against fixed reference parameters instead of sampled priors.
-        robust: Whether to use robust clipping in the visualization.
+        params_sbts: Estimated parameters from SBTS data.
+        params_sbbts: Estimated parameters from SBBTS data.
+        q1: Lower percentile cut.
+        q2: Upper percentile cut.
+        fix: If True, plot fixed reference instead of random prior.
+        robust: Whether to apply robust filtering.
 
     Returns:
         None.
