@@ -7,8 +7,7 @@ from torch import nn
 from encoder_only import EncoderOnly
 
 def get_timestep_embedding(timesteps, embedding_dim=128):
-    """Get timestep embedding.
-
+    """
     Args:
         timesteps: Tensor of time indices/timestamps to encode.
         embedding_dim: Size of the sinusoidal time embedding.
@@ -28,10 +27,7 @@ def get_timestep_embedding(timesteps, embedding_dim=128):
 
 class MLP(torch.nn.Module):
     def __init__(self, input_dim, d_model, hidden_dim):
-        """Initialize the module/class state.
-
-        Configure internal attributes used by the SBBTS model and utilities.
-
+        """
         Args:
             input_dim: Dimensionality of the raw input space.
             d_model: Internal embedding dimension used by the networks.
@@ -64,9 +60,8 @@ class MLP(torch.nn.Module):
         )
 
     def forward(self, t, y, h):
-        """Forward.
-
-    Args:
+        """
+        Args:
             t: Continuous time variable.
             y: Current state values.
             h: Context embedding from the temporal encoder.
@@ -81,10 +76,7 @@ class MLP(torch.nn.Module):
 
 class ScoreNN(torch.nn.Module):
     def __init__(self, input_dim, d_model, hidden_dim, nhead, n_layers, L, device):
-        """Initialize the module/class state.
-
-        Configure internal attributes used by the SBBTS model and utilities.
-
+        """
         Args:
             input_dim: Dimensionality of the raw input space.
             d_model: Internal embedding dimension used by the networks.
@@ -93,9 +85,6 @@ class ScoreNN(torch.nn.Module):
             n_layers: Number of Transformer encoder layers.
             L: Maximum sequence length used by the encoder mask.
             device: Torch device used for allocations and cleanup.
-
-        Returns:
-            None.
         """
         super().__init__()
 
@@ -103,15 +92,11 @@ class ScoreNN(torch.nn.Module):
         self.get_drift = MLP(input_dim, d_model, hidden_dim)
 
     def forward(self, t, y, y_past):
-        """Forward.
-
-    Args:
+        """
+        Args:
             t: Continuous time variable.
             y: Current state values.
             y_past: Past trajectory used as temporal context.
-
-        Returns:
-            Computed output(s) produced by the function.
         """
         h = self.tf_encoder(y_past)
         return self.get_drift(t, y, h)
@@ -119,17 +104,11 @@ class ScoreNN(torch.nn.Module):
 # for beta small
 class InverseMLP(torch.nn.Module):
     def __init__(self, input_dim, d_model, t_model):
-        """Initialize the module/class state.
-
-        Configure internal attributes used by the SBBTS model and utilities.
-
+        """
         Args:
             input_dim: Dimensionality of the raw input space.
             d_model: Internal embedding dimension used by the networks.
             t_model: Drift network that consumes time/state embeddings.
-
-        Returns:
-            None.
         """
         super().__init__()
         self.d_model = d_model
@@ -155,14 +134,10 @@ class InverseMLP(torch.nn.Module):
         )
 
     def forward(self, t, y):
-        """Forward.
-
-    Args:
+        """
+        Args:
             t: Continuous time variable.
             y: Current state values.
-
-        Returns:
-            Computed output(s) produced by the function.
         """
         t_embed = self.t_encoder(t)
         y_embed = self.y_encoder(y)
