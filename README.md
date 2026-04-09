@@ -1,6 +1,6 @@
 # 📌 Official Implementation of "SBBTS: A Unified Schrödinger-Bass Framework for Synthetic Financial Time Series"
 
-This repository contains the official implementation of the paper [SBBTS: A Unified Schrödinger-Bass Framework for Synthetic Financial Time Series](https://arxiv.org/abs/2604.07159).
+This repository contains the official implementation of the paper: [SBBTS: A Unified Schrödinger-Bass Framework for Synthetic Financial Time Series](https://arxiv.org/abs/2604.07159).
 
 
 - **Authors**: Alexandre Alouadi, Grégoire Loeper, Célian Marsala, Othmane Mazhar, Huyên Pham
